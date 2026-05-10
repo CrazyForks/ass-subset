@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7-beta3">
+  <meta name="version" content="2.7-beta4">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -1701,7 +1701,7 @@
       </div>
       <div class="step-body">
         <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-primary" id="btn-convert" data-i18n="btn.convert">Run Subsetter</button>
+          <button class="btn btn-primary" id="btn-convert" data-i18n="btn.convert">Start Conversion</button>
           <button class="btn btn-success hidden" id="btn-download" data-i18n="btn.download">Download Output</button>
           <label class="btn btn-outline hidden" id="opt-optimize-wrap"
             style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
@@ -1931,7 +1931,7 @@
         'opt.fullfont.title': '完整嵌入字体',
         'opt.fullfont.desc': '跳过子集化过程，直接嵌入完整字体；字幕内文字改动无需重新处理，但导致字幕文件体积大、转换耗时较长',
         'notice.fullfont': '⚠ 完整字体警告：完整嵌入字体会导致字幕文件体积剧增，可能引起播放器卡顿或加载缓慢。',
-        'opt.strip.desc': '移除字幕中已有的内嵌字体，但保留子集化绘图指令所用的字型',
+        'opt.strip.desc': '移除字幕中已有的内嵌字体，并回退可逆的图形指令',
         'opt.strip.title': '移除内嵌字体',
         'opt.append_optimize': '追加 _optimized 后缀',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
@@ -2117,7 +2117,7 @@
         'opt.fullfont.title': '完整嵌入字型',
         'opt.fullfont.desc': '跳過子集化過程，直接嵌入完整字型；字幕內文字改動無需重新處理，但導致字幕檔案體積大、轉換耗時較長',
         'notice.fullfont': '⚠ 完整字型警告：完整嵌入字型會導致字幕檔案體積劇增，可能引起播放器卡頓或載入緩慢。',
-        'opt.strip.desc': '移除字幕中已有的內嵌字型，但保留子集化繪圖指令所用的字型',
+        'opt.strip.desc': '移除字幕中已有的內嵌字型，並回復可逆的繪圖命令',
         'opt.strip.title': '移除內嵌字型',
         'opt.append_optimize': '追加 _optimized 後綴',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
@@ -2193,7 +2193,7 @@
         'aria.modal_close': 'Close preview',
         'aria.expand': 'Click to expand details',
         'aria.preview_dl_font': 'Download font {name}',
-        'btn.convert': 'Run Subsetter',
+        'btn.convert': 'Start Conversion',
         'btn.converting': 'Processing...',
         'btn.discuss': 'Discussion',
         'btn.download': 'Download Output',
@@ -2303,7 +2303,7 @@
         'opt.fullfont.title': 'Embed Full Fonts',
         'opt.fullfont.desc': 'Embed the complete font without subsetting. Subtitle text changes require no reprocessing, but result in larger file size and longer conversion time.',
         'notice.fullfont': '⚠ Full Font Warning: Embedding full fonts will significantly bloat the subtitle file size, potentially causing performance issues in media players.',
-        'opt.strip.desc': 'Remove existing embedded fonts from the subtitle while keeping the subsetted draw fonts.',
+        'opt.strip.desc': 'Remove existing embedded fonts from the subtitle and revert reversible draw commands.',
         'opt.strip.title': 'Remove Embedded Fonts',
         'opt.append_optimize': 'Add _optimized suffix',
         'path.linux': 'Linux: ~/.fonts or /usr/share/fonts',
@@ -2489,7 +2489,7 @@
         'opt.fullfont.title': 'フルフォントを埋め込む',
         'opt.fullfont.desc': 'サブセット化せず、完全なフォントを埋め込みます。字幕テキストの変更に再処理は不要ですが、ファイルサイズが大きく変換に時間がかかります。',
         'notice.fullfont': '⚠ フルフォント警告：フルフォントを埋め込むと字幕ファイルのサイズが劇的に増加し、プレイヤーのパフォーマンスに影響を与える可能性があります。',
-        'opt.strip.desc': 'スクリプト内の既存の埋め込みフォントを削除します（描画サブセット字型は保持）。',
+        'opt.strip.desc': 'スクリプト内の既存埋め込みフォントを削除し、可逆な描画コマンドを復元します。',
         'opt.strip.title': '埋め込みフォントを削除',
         'opt.append_optimize': '_optimized 接尾辞を追加',
         'path.linux': 'Linux：~/.fonts または /usr/share/fonts',
@@ -2675,7 +2675,7 @@
         'opt.fullfont.title': '전체 폰트 삽입',
         'opt.fullfont.desc': '자막 텍스트 수정 시 재처리 없이 완전한 폰트를 삽입합니다. 다만 파일 크기가 커지고 변환 시간이 늘어납니다.',
         'notice.fullfont': '⚠ 전체 폰트 경고: 전체 폰트를 삽입하면 자막 파일 크기가 급격히 커져 미디어 플레이어 성능 문제가 발생할 수 있습니다.',
-        'opt.strip.desc': '자막에 내장된 기존 폰트를 제거합니다(드로우 서브셋 폰트는 유지).',
+        'opt.strip.desc': '자막에 포함된 기존 임베디드 폰트를 제거하고, 가역적인 드로우 명령을 복원합니다.',
         'opt.strip.title': '내장 폰트 제거',
         'opt.append_optimize': '_optimized 접미사 추가',
         'path.linux': 'Linux: ~/.fonts 또는 /usr/share/fonts',
@@ -2861,7 +2861,7 @@
         'opt.fullfont.title': 'Incrustar fuentes completas',
         'opt.fullfont.desc': 'Incrusta la fuente completa sin crear subconjuntos. Las modificaciones de subtítulos no requieren reprocesamiento, pero aumentan el tamaño del archivo y el tiempo de conversión.',
         'notice.fullfont': '⚠ Advertencia: incrustar fuentes completas puede aumentar drásticamente el tamaño del archivo y causar problemas de rendimiento en el reproductor.',
-        'opt.strip.desc': 'Elimina las fuentes incrustadas existentes en el guion (conserva las fuentes de dibujo).',
+        'opt.strip.desc': 'Elimina las fuentes incrustadas existentes en el guion y revierte los comandos de dibujo reversibles.',
         'opt.strip.title': 'Eliminar fuentes incrustadas',
         'opt.append_optimize': 'Añadir sufijo _optimized',
         'path.linux': 'Linux: ~/.fonts o /usr/share/fonts',
@@ -3047,7 +3047,7 @@
         'opt.fullfont.title': 'Встроить полные шрифты',
         'opt.fullfont.desc': 'Встроить полный шрифт без подмножества. Изменения текста в субтитрах не требуют переработки, но увеличивают размер файла и время преобразования.',
         'notice.fullfont': '⚠ Предупреждение о полных шрифтах: Встраивание полных шрифтов радикально увеличит размер файла субтитров, что может вызвать проблемы с производительностью.',
-        'opt.strip.desc': 'Удаляет существующие встроенные шрифты (сохраняет шрифты команд рисования).',
+        'opt.strip.desc': 'Удаляет существующие встроенные шрифты и восстанавливает обратимые draw-команды.',
         'opt.strip.title': 'Удалить встроенные шрифты',
         'opt.append_optimize': 'Добавить суффикс _optimized',
         'path.linux': 'Linux: ~/.fonts или /usr/share/fonts',
@@ -3233,7 +3233,7 @@
         'opt.fullfont.title': 'Incorporar Fontes Completas',
         'opt.fullfont.desc': 'Incorpora a fonte completa sem subsetting. Alterações de texto nas legendas não requerem reprocessamento, mas aumentam o tamanho do arquivo e o tempo de conversão.',
         'notice.fullfont': '⚠ Aviso de Fonte Completa: Incorporar fontes completas aumentará drasticamente o tamanho do arquivo de legenda, podendo causar problemas de desempenho.',
-        'opt.strip.desc': 'Remove fontes embutidas não padronizadas existentes para reduzir o tamanho do arquivo (mantém fontes de desenho).',
+        'opt.strip.desc': 'Remove fontes embutidas existentes e restaura comandos de desenho reversíveis.',
         'opt.strip.title': 'Remover Fontes Embutidas',
         'opt.append_optimize': 'Adicionar sufixo _optimized',
         'path.linux': 'Linux: ~/.fonts ou /usr/share/fonts',
@@ -3419,7 +3419,7 @@
         'opt.fullfont.title': 'تضمين خطوط كاملة',
         'opt.fullfont.desc': 'أدرج الخط الكامل بدون إنشاء مجموعات فرعية. تعديلات نص الترجمات لا تحتاج إعادة معالجة، لكن تزيد حجم الملف ووقت التحويل.',
         'notice.fullfont': '⚠ تحذير الخط الكامل: سيؤدي تضمين خطوط كاملة إلى تضخم حجم ملف الترجمة بشكل كبير، مما قد يسبب مشاكل في أداء مشغلات الوسائط.',
-        'opt.strip.desc': 'يزيل الخطوط المضمنة الموجودة في النص (يحافظ على خطوط الرسم).',
+        'opt.strip.desc': 'يزيل الخطوط المضمنة الموجودة في الترجمة ويستعيد أوامر الرسم القابلة للعكس.',
         'opt.strip.title': 'إزالة الخطوط المضمنة',
         'opt.append_optimize': 'إضافة لاحقة _optimized',
         'path.linux': 'Linux: ~/.fonts أو /usr/share/fonts',
@@ -3605,7 +3605,7 @@
         'opt.fullfont.title': 'Tam Fontları Göm',
         'opt.fullfont.desc': 'Yazı tipinin tamamını gömün; altyazı metni değişiklikleri yeniden işlemeyi gerektirmez. Ancak dosya boyutu artar ve dönüştürme daha uzun sürer.',
         'notice.fullfont': '⚠ Tam Font Uyarısı: Tam fontları gömmek altyazı dosyasının boyutunu büyük ölçüde şişirir ve medya oynatıcılarında performans sorunlarına yol açabilir.',
-        'opt.strip.desc': 'Altyazıdaki mevcut gömülü fontları kaldırır (çizim komutu fontlarını korur).',
+        'opt.strip.desc': 'Altyazıdaki mevcut gömülü yazı tiplerini kaldırır ve geri alınabilir çizim komutlarını geri yükler.',
         'opt.strip.title': 'Gömülü Fontları Kaldır',
         'opt.append_optimize': '_optimized son ekini ekle',
         'path.linux': 'Linux: ~/.fonts veya /usr/share/fonts',
