@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.6.28">
+  <meta name="version" content="2.7">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -1911,6 +1911,12 @@
         'log.font.subset_done': '[font] 「{name}」({weight}): {origKB} KB → {newKB} KB（缩减 {pct}%）{skippedText}',
         'log.font.subset_fail': '[font] 「{name}」处理失败: {error}',
         'log.font.subsetting': '[font] 正在处理「{name}」({weight}，{chars} 字符)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} 不含 draw 表（旧版字体），跳过还原，保留字体。',
+        'log.draw.strip.full': '[draw] ✓ 绘图指令已完整还原：{name} 中 {count} 个字形全部恢复为 \\p 指令，字体已移除。',
+        'log.draw.strip.partial': '[draw] ⚠ 绘图指令部分还原：{name} — {restored} 个字形已还原，{retained} 个字形无法还原（点击展开）',
+        'log.draw.strip.partial.item': '  - 字符 {char} 无法还原（draw 表缺失该条目）',
+        'log.draw.strip.unrestorable': '[draw] ✗ 绘图指令无法还原：{name} — {retained} 个字形均不在 draw 表中，字体已保留（点击展开）',
+        'log.draw.strip.orphan_purge': '[draw] ✓ 字幕中已无绘图指令引用，{name} 中所有孤立字形已清除，字体已移除。',
         'log.rewrite.start': '[ass] 重写字幕文件...',
         'notice.copyright': '⚠ 版权提示：分发未经授权的字体文件可能构成侵权。请确保你拥有所嵌入字体的分发权利。',
         'notice.drawing': '⚠ 注意：绘图指令转换后，特效的大小和位置可能发生轻微偏移，请手动检查最终效果。',
@@ -1925,7 +1931,7 @@
         'opt.fullfont.title': '完整嵌入字体',
         'opt.fullfont.desc': '跳过子集化过程，直接嵌入完整字体；字幕内文字改动无需重新处理，但导致字幕文件体积大、转换耗时较长',
         'notice.fullfont': '⚠ 完整字体警告：完整嵌入字体会导致字幕文件体积剧增，可能引起播放器卡顿或加载缓慢。',
-        'opt.strip.desc': '移除字幕中已有的内嵌字体，但保留子集化绘图指令所用的字型',
+        'opt.strip.desc': '移除字幕中已有的内嵌字体，并回退可逆的图形指令',
         'opt.strip.title': '移除内嵌字体',
         'opt.append_optimize': '追加 _optimized 后缀',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
@@ -2091,6 +2097,12 @@
         'log.font.subset_done': '[font] 「{name}」({weight}): {origKB} KB → {newKB} KB（縮減 {pct}%）{skippedText}',
         'log.font.subset_fail': '[font] 「{name}」處理失敗: {error}',
         'log.font.subsetting': '[font] 正在處理「{name}」({weight}，{chars} 字元)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} 不含 draw 表（舊版字型），跳過還原，保留字型。',
+        'log.draw.strip.full': '[draw] ✓ 繪圖指令已完整還原：{name} 中 {count} 個字形全部恢復為 \\p 指令，字型已移除。',
+        'log.draw.strip.partial': '[draw] ⚠ 繪圖指令部分還原：{name} — {restored} 個字形已還原，{retained} 個字形無法還原（點擊展開）',
+        'log.draw.strip.partial.item': '  - 字符 {char} 無法還原（draw 表缺少該條目）',
+        'log.draw.strip.unrestorable': '[draw] ✗ 繪圖指令無法還原：{name} — {retained} 個字形均不在 draw 表中，字型已保留（點擊展開）',
+        'log.draw.strip.orphan_purge': '[draw] ✓ 字幕中已無繪圖指令引用，{name} 中所有孤立字形已清除，字型已移除。',
         'log.rewrite.start': '[ass] 重寫字幕檔...',
         'notice.copyright': '⚠ 版權提示：分發未授權的字型檔可能構成侵權。請確保你擁有所嵌入字型的分發權利。',
         'notice.drawing': '⚠ 注意：繪圖指令轉換後，特效的大小和位置可能發生輕微偏移，請手動確認最終效果。',
@@ -2105,7 +2117,7 @@
         'opt.fullfont.title': '完整嵌入字型',
         'opt.fullfont.desc': '跳過子集化過程，直接嵌入完整字型；字幕內文字改動無需重新處理，但導致字幕檔案體積大、轉換耗時較長',
         'notice.fullfont': '⚠ 完整字型警告：完整嵌入字型會導致字幕檔案體積劇增，可能引起播放器卡頓或載入緩慢。',
-        'opt.strip.desc': '移除字幕中已有的內嵌字型，但保留子集化繪圖指令所用的字型',
+        'opt.strip.desc': '移除字幕中已有的內嵌字型，並回復可逆的繪圖命令',
         'opt.strip.title': '移除內嵌字型',
         'opt.append_optimize': '追加 _optimized 後綴',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
@@ -2271,6 +2283,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] "{name}" failed: {error}',
         'log.font.subsetting': '[font] Processing "{name}" ({weight}, {chars} chars)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} has no draw table (legacy font) — font retained as-is.',
+        'log.draw.strip.full': '[draw] ✓ Draw commands fully restored: all {count} glyph(s) in {name} recovered as \\p instructions. Font removed.',
+        'log.draw.strip.partial': '[draw] ⚠ Draw commands partially restored: {name} — {restored} glyph(s) recovered, {retained} unrestorable (click to expand)',
+        'log.draw.strip.partial.item': '  - Glyph {char} could not be restored (missing from draw table)',
+        'log.draw.strip.unrestorable': '[draw] ✗ Draw commands cannot be restored: {name} — {retained} glyph(s) not in draw table, font retained (click to expand)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ No draw references remain in script. All orphaned glyphs in {name} cleared. Font removed.',
         'log.rewrite.start': '[ass] Rewriting script...',
         'notice.copyright': '⚠ Font copyright: redistributing fonts without a valid license may constitute infringement. Ensure you have distribution rights for any fonts you embed.',
         'notice.drawing': '⚠ Note: converting draw commands may cause minor position or scale shifts. Always verify the final render.',
@@ -2285,7 +2303,7 @@
         'opt.fullfont.title': 'Embed Full Fonts',
         'opt.fullfont.desc': 'Embed the complete font without subsetting. Subtitle text changes require no reprocessing, but result in larger file size and longer conversion time.',
         'notice.fullfont': '⚠ Full Font Warning: Embedding full fonts will significantly bloat the subtitle file size, potentially causing performance issues in media players.',
-        'opt.strip.desc': 'Remove existing embedded fonts from the subtitle while keeping the subsetted draw fonts.',
+        'opt.strip.desc': 'Remove existing embedded fonts from the subtitle and revert reversible draw commands.',
         'opt.strip.title': 'Remove Embedded Fonts',
         'opt.append_optimize': 'Add _optimized suffix',
         'path.linux': 'Linux: ~/.fonts or /usr/share/fonts',
@@ -2451,6 +2469,12 @@
         'log.font.subset_done': '[font] 「{name}」({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] 「{name}」の処理に失敗しました: {error}',
         'log.font.subsetting': '[font] 「{name}」({weight}、{chars} 文字) を処理中...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} に draw テーブルがありません（旧フォント）—フォントを保持します。',
+        'log.draw.strip.full': '[draw] ✓ 描画コマンドが完全に復元されました：{name} の {count} グリフすべてを \\p 命令に戻しました。フォントを削除しました。',
+        'log.draw.strip.partial': '[draw] ⚠ 描画コマンドが部分的に復元されました：{name} — {restored} グリフ復元済み、{retained} 個は復元不可（クリックで展開）',
+        'log.draw.strip.partial.item': '  - グリフ {char} は復元できません（draw テーブルに未登録）',
+        'log.draw.strip.unrestorable': '[draw] ✗ 描画コマンドを復元できません：{name} — {retained} グリフが draw テーブルにありません、フォントを保持します（クリックで展開）',
+        'log.draw.strip.orphan_purge': '[draw] ✓ スクリプト内に描画参照がありません。{name} の孤立グリフをすべて削除し、フォントを削除しました。',
         'log.rewrite.start': '[ass] スクリプトを書き換え中...',
         'notice.copyright': '⚠ 著作権注意：未許諾フォントの配布は権利侵害となる場合があります。埋め込むフォントの配布権利をご確認ください。',
         'notice.drawing': '⚠ 注意：描画コマンドの変換後、エフェクトの位置やサイズがわずかにずれることがあります。最終的な表示を必ず確認してください。',
@@ -2465,7 +2489,7 @@
         'opt.fullfont.title': 'フルフォントを埋め込む',
         'opt.fullfont.desc': 'サブセット化せず、完全なフォントを埋め込みます。字幕テキストの変更に再処理は不要ですが、ファイルサイズが大きく変換に時間がかかります。',
         'notice.fullfont': '⚠ フルフォント警告：フルフォントを埋め込むと字幕ファイルのサイズが劇的に増加し、プレイヤーのパフォーマンスに影響を与える可能性があります。',
-        'opt.strip.desc': 'スクリプト内の既存の埋め込みフォントを削除します（描画サブセット字型は保持）。',
+        'opt.strip.desc': 'スクリプト内の既存埋め込みフォントを削除し、可逆な描画コマンドを復元します。',
         'opt.strip.title': '埋め込みフォントを削除',
         'opt.append_optimize': '_optimized 接尾辞を追加',
         'path.linux': 'Linux：~/.fonts または /usr/share/fonts',
@@ -2631,6 +2655,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] "{name}" 처리 실패: {error}',
         'log.font.subsetting': '[font] "{name}" ({weight}, {chars}자) 처리 중...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} 에 draw 테이블이 없습니다 (구버전 폰트) — 폰트를 유지합니다.',
+        'log.draw.strip.full': '[draw] ✓ 드로우 명령이 완전히 복원되었습니다: {name} 의 {count} 개 글리프가 \\p 명령으로 복원되었습니다. 폰트가 제거되었습니다.',
+        'log.draw.strip.partial': '[draw] ⚠ 드로우 명령이 부분적으로 복원되었습니다: {name} — {restored} 개 복원됨, {retained} 개 복원 불가 (클릭하여 펼치기)',
+        'log.draw.strip.partial.item': '  - 글리프 {char} 복원 불가 (draw 테이블에 없음)',
+        'log.draw.strip.unrestorable': '[draw] ✗ 드로우 명령을 복원할 수 없습니다: {name} — {retained} 개 글리프가 draw 테이블에 없습니다, 폰트를 유지합니다 (클릭하여 펼치기)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ 스크립트에 드로우 참조가 없습니다. {name} 의 모든 고아 글리프를 지우고 폰트를 제거했습니다.',
         'log.rewrite.start': '[ass] 자막 스크립트 재작성 중...',
         'notice.copyright': '⚠ 저작권 주의: 허가 없이 폰트를 배포하면 저작권 침해가 될 수 있습니다. 삽입하는 폰트의 배포 권한이 있는지 확인하세요.',
         'notice.drawing': '⚠ 주의: 드로우 명령어 변환 후 효과의 위치나 크기가 약간 변경될 수 있습니다. 항상 최종 결과를 확인하세요.',
@@ -2645,7 +2675,7 @@
         'opt.fullfont.title': '전체 폰트 삽입',
         'opt.fullfont.desc': '자막 텍스트 수정 시 재처리 없이 완전한 폰트를 삽입합니다. 다만 파일 크기가 커지고 변환 시간이 늘어납니다.',
         'notice.fullfont': '⚠ 전체 폰트 경고: 전체 폰트를 삽입하면 자막 파일 크기가 급격히 커져 미디어 플레이어 성능 문제가 발생할 수 있습니다.',
-        'opt.strip.desc': '자막에 내장된 기존 폰트를 제거합니다(드로우 서브셋 폰트는 유지).',
+        'opt.strip.desc': '자막에 포함된 기존 임베디드 폰트를 제거하고, 가역적인 드로우 명령을 복원합니다.',
         'opt.strip.title': '내장 폰트 제거',
         'opt.append_optimize': '_optimized 접미사 추가',
         'path.linux': 'Linux: ~/.fonts 또는 /usr/share/fonts',
@@ -2811,6 +2841,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] "{name}" falló: {error}',
         'log.font.subsetting': '[font] Procesando "{name}" ({weight}, {chars} caracteres)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} no tiene tabla draw (fuente antigua) — se conserva la fuente.',
+        'log.draw.strip.full': '[draw] ✓ Comandos de dibujo restaurados completamente: {count} glifo(s) de {name} recuperados como instrucciones \\p. Fuente eliminada.',
+        'log.draw.strip.partial': '[draw] ⚠ Restauración parcial de comandos de dibujo: {name} — {restored} glifo(s) restaurados, {retained} no restaurables (clic para expandir)',
+        'log.draw.strip.partial.item': '  - Glifo {char} no restaurable (ausente en tabla draw)',
+        'log.draw.strip.unrestorable': '[draw] ✗ No se pueden restaurar comandos de dibujo: {name} — {retained} glifo(s) no están en la tabla draw, fuente conservada (clic para expandir)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ Sin referencias de dibujo en el script. Todos los glifos huérfanos de {name} eliminados. Fuente removida.',
         'log.rewrite.start': '[ass] Reescribiendo subtítulo...',
         'notice.copyright': '⚠ Derechos de autor: redistribuir fuentes sin permiso puede infringir su licencia. Asegúrate de contar con los derechos de distribución de las fuentes que incrustes.',
         'notice.drawing': '⚠ Nota: la conversión de comandos de dibujo puede causar desplazamientos menores de posición o escala. Siempre verifica el resultado final.',
@@ -2825,7 +2861,7 @@
         'opt.fullfont.title': 'Incrustar fuentes completas',
         'opt.fullfont.desc': 'Incrusta la fuente completa sin crear subconjuntos. Las modificaciones de subtítulos no requieren reprocesamiento, pero aumentan el tamaño del archivo y el tiempo de conversión.',
         'notice.fullfont': '⚠ Advertencia: incrustar fuentes completas puede aumentar drásticamente el tamaño del archivo y causar problemas de rendimiento en el reproductor.',
-        'opt.strip.desc': 'Elimina las fuentes incrustadas existentes en el guion (conserva las fuentes de dibujo).',
+        'opt.strip.desc': 'Elimina las fuentes incrustadas existentes en el guion y revierte los comandos de dibujo reversibles.',
         'opt.strip.title': 'Eliminar fuentes incrustadas',
         'opt.append_optimize': 'Añadir sufijo _optimized',
         'path.linux': 'Linux: ~/.fonts o /usr/share/fonts',
@@ -2991,6 +3027,12 @@
         'log.font.subset_done': '[font] «{name}» ({weight}): {origKB} КБ → {newKB} КБ (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] Ошибка обработки «{name}»: {error}',
         'log.font.subsetting': '[font] Обработка «{name}» ({weight}, {chars} симв.)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} не содержит таблицу draw (старый шрифт) — шрифт сохранён.',
+        'log.draw.strip.full': '[draw] ✓ Команды рисования полностью восстановлены: {count} глиф(а/ов) из {name} возвращены как инструкции \\p. Шрифт удалён.',
+        'log.draw.strip.partial': '[draw] ⚠ Частичное восстановление: {name} — {restored} глиф(а/ов) восстановлено, {retained} не восстановлено (нажмите для раскрытия)',
+        'log.draw.strip.partial.item': '  - Глиф {char} не восстановлен (отсутствует в таблице draw)',
+        'log.draw.strip.unrestorable': '[draw] ✗ Восстановление невозможно: {name} — {retained} глиф(а/ов) отсутствуют в таблице draw, шрифт сохранён (нажмите для раскрытия)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ Ссылок на рисунки в скрипте нет. Все осиротевшие глифы из {name} удалены. Шрифт удалён.',
         'log.rewrite.start': '[ass] Перезапись скрипта...',
         'notice.copyright': '⚠ Авторские права: распространение шрифтов без лицензии может нарушать авторские права. Убедитесь в наличии прав на распространение встраиваемых шрифтов.',
         'notice.drawing': '⚠ Внимание: после конвертации команд рисования возможны незначительные смещения позиций и размеров эффектов. Обязательно проверьте конечный результат.',
@@ -3005,7 +3047,7 @@
         'opt.fullfont.title': 'Встроить полные шрифты',
         'opt.fullfont.desc': 'Встроить полный шрифт без подмножества. Изменения текста в субтитрах не требуют переработки, но увеличивают размер файла и время преобразования.',
         'notice.fullfont': '⚠ Предупреждение о полных шрифтах: Встраивание полных шрифтов радикально увеличит размер файла субтитров, что может вызвать проблемы с производительностью.',
-        'opt.strip.desc': 'Удаляет существующие встроенные шрифты (сохраняет шрифты команд рисования).',
+        'opt.strip.desc': 'Удаляет существующие встроенные шрифты и восстанавливает обратимые draw-команды.',
         'opt.strip.title': 'Удалить встроенные шрифты',
         'opt.append_optimize': 'Добавить суффикс _optimized',
         'path.linux': 'Linux: ~/.fonts или /usr/share/fonts',
@@ -3171,6 +3213,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] "{name}" falhou: {error}',
         'log.font.subsetting': '[font] Processando "{name}" ({weight}, {chars} caracteres)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} não tem tabela draw (fonte legada) — fonte mantida.',
+        'log.draw.strip.full': '[draw] ✓ Comandos de desenho totalmente restaurados: {count} glifo(s) de {name} recuperados como instruções \\p. Fonte removida.',
+        'log.draw.strip.partial': '[draw] ⚠ Restauração parcial: {name} — {restored} glifo(s) restaurados, {retained} não restauráveis (clique para expandir)',
+        'log.draw.strip.partial.item': '  - Glifo {char} não restaurável (ausente na tabela draw)',
+        'log.draw.strip.unrestorable': '[draw] ✗ Não é possível restaurar: {name} — {retained} glifo(s) ausentes na tabela draw, fonte mantida (clique para expandir)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ Sem referências de desenho no script. Todos os glifos órfãos de {name} removidos. Fonte removida.',
         'log.rewrite.start': '[ass] Reescrevendo legenda...',
         'notice.copyright': '⚠ Direitos autorais: redistribuir fontes sem licença adequada pode constituir infração. Certifique-se de ter permissão para distribuir as fontes que incorporar.',
         'notice.drawing': '⚠ Atenção: a conversão de comandos de desenho pode causar pequenos deslocamentos de posição ou escala. Sempre verifique o resultado final.',
@@ -3185,7 +3233,7 @@
         'opt.fullfont.title': 'Incorporar Fontes Completas',
         'opt.fullfont.desc': 'Incorpora a fonte completa sem subsetting. Alterações de texto nas legendas não requerem reprocessamento, mas aumentam o tamanho do arquivo e o tempo de conversão.',
         'notice.fullfont': '⚠ Aviso de Fonte Completa: Incorporar fontes completas aumentará drasticamente o tamanho do arquivo de legenda, podendo causar problemas de desempenho.',
-        'opt.strip.desc': 'Remove fontes embutidas não padronizadas existentes para reduzir o tamanho do arquivo (mantém fontes de desenho).',
+        'opt.strip.desc': 'Remove fontes embutidas existentes e restaura comandos de desenho reversíveis.',
         'opt.strip.title': 'Remover Fontes Embutidas',
         'opt.append_optimize': 'Adicionar sufixo _optimized',
         'path.linux': 'Linux: ~/.fonts ou /usr/share/fonts',
@@ -3351,6 +3399,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} كيلوبايت → {newKB} كيلوبايت (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] فشلت معالجة "{name}": {error}',
         'log.font.subsetting': '[font] جارٍ معالجة "{name}" ({weight}، {chars} حرف)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} لا يحتوي على جدول draw (خط قديم) — تم الاحتفاظ بالخط.',
+        'log.draw.strip.full': '[draw] ✓ تمت استعادة أوامر الرسم بالكامل: {count} حرف من {name} استُعيد كتعليمات \\p. تمت إزالة الخط.',
+        'log.draw.strip.partial': '[draw] ⚠ استعادة جزئية: {name} — {restored} حرف مستعاد، {retained} غير قابل للاستعادة (انقر للتوسيع)',
+        'log.draw.strip.partial.item': '  - الحرف {char} غير قابل للاستعادة (غائب عن جدول draw)',
+        'log.draw.strip.unrestorable': '[draw] ✗ تعذّرت الاستعادة: {name} — {retained} حرف غير موجود في جدول draw، تم الاحتفاظ بالخط (انقر للتوسيع)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ لا مراجع رسم في النص. تم حذف جميع الحروف المعزولة من {name}. تمت إزالة الخط.',
         'log.rewrite.start': '[ass] جارٍ إعادة كتابة النص...',
         'notice.copyright': '⚠ حقوق الملكية: قد يُشكّل توزيع الخطوط دون ترخيص انتهاكاً لحقوق النشر. تأكد من امتلاكك حق توزيع الخطوط التي تضمّنها.',
         'notice.drawing': '⚠ ملاحظة: قد يتسبب تحويل أوامر الرسم في انزياحات طفيفة في المواضع والأحجام. تحقق دائماً من النتيجة النهائية.',
@@ -3365,7 +3419,7 @@
         'opt.fullfont.title': 'تضمين خطوط كاملة',
         'opt.fullfont.desc': 'أدرج الخط الكامل بدون إنشاء مجموعات فرعية. تعديلات نص الترجمات لا تحتاج إعادة معالجة، لكن تزيد حجم الملف ووقت التحويل.',
         'notice.fullfont': '⚠ تحذير الخط الكامل: سيؤدي تضمين خطوط كاملة إلى تضخم حجم ملف الترجمة بشكل كبير، مما قد يسبب مشاكل في أداء مشغلات الوسائط.',
-        'opt.strip.desc': 'يزيل الخطوط المضمنة الموجودة في النص (يحافظ على خطوط الرسم).',
+        'opt.strip.desc': 'يزيل الخطوط المضمنة الموجودة في الترجمة ويستعيد أوامر الرسم القابلة للعكس.',
         'opt.strip.title': 'إزالة الخطوط المضمنة',
         'opt.append_optimize': 'إضافة لاحقة _optimized',
         'path.linux': 'Linux: ~/.fonts أو /usr/share/fonts',
@@ -3531,6 +3585,12 @@
         'log.font.subset_done': '[font] "{name}" ({weight}): {origKB} KB → {newKB} KB (−{pct}%){skippedText}',
         'log.font.subset_fail': '[font] "{name}" başarısız: {error}',
         'log.font.subsetting': '[font] "{name}" işleniyor ({weight}, {chars} karakter)...',
+        'log.draw.strip.no_table': '[draw] ⚠ {name} draw tablosu içermiyor (eski font) — font korunuyor.',
+        'log.draw.strip.full': '[draw] ✓ Çizim komutları tamamen geri yüklendi: {name} içindeki {count} glif \\p talimatına dönüştürüldü. Font kaldırıldı.',
+        'log.draw.strip.partial': '[draw] ⚠ Kısmi geri yükleme: {name} — {restored} glif geri yüklendi, {retained} geri yüklenemedi (genişletmek için tıklayın)',
+        'log.draw.strip.partial.item': '  - Glif {char} geri yüklenemedi (draw tablosunda yok)',
+        'log.draw.strip.unrestorable': '[draw] ✗ Geri yükleme yapılamıyor: {name} — {retained} glif draw tablosunda bulunamadı, font korunuyor (genişletmek için tıklayın)',
+        'log.draw.strip.orphan_purge': '[draw] ✓ Scriptte çizim referansı kalmadı. {name} içindeki tüm yalnız glifler temizlendi. Font kaldırıldı.',
         'log.rewrite.start': '[ass] Altyazı yeniden yazılıyor...',
         'notice.copyright': '⚠ Telif hakkı: Lisanssız font dağıtımı telif hakkı ihlali sayılabilir. Gömdüğünüz fontları dağıtma hakkınız olduğundan emin olun.',
         'notice.drawing': '⚠ Dikkat: çizim komutlarının dönüştürülmesi efektlerde küçük konum veya boyut farklılıklarına yol açabilir. Sonucu mutlaka kontrol edin.',
@@ -3545,7 +3605,7 @@
         'opt.fullfont.title': 'Tam Fontları Göm',
         'opt.fullfont.desc': 'Yazı tipinin tamamını gömün; altyazı metni değişiklikleri yeniden işlemeyi gerektirmez. Ancak dosya boyutu artar ve dönüştürme daha uzun sürer.',
         'notice.fullfont': '⚠ Tam Font Uyarısı: Tam fontları gömmek altyazı dosyasının boyutunu büyük ölçüde şişirir ve medya oynatıcılarında performans sorunlarına yol açabilir.',
-        'opt.strip.desc': 'Altyazıdaki mevcut gömülü fontları kaldırır (çizim komutu fontlarını korur).',
+        'opt.strip.desc': 'Altyazıdaki mevcut gömülü yazı tiplerini kaldırır ve geri alınabilir çizim komutlarını geri yükler.',
         'opt.strip.title': 'Gömülü Fontları Kaldır',
         'opt.append_optimize': '_optimized son ekini ekle',
         'path.linux': 'Linux: ~/.fonts veya /usr/share/fonts',
@@ -4613,7 +4673,10 @@
           let unknownRandCount = 0;
           for (const efName of Object.keys(entry.parsed.embeddedFonts)) {
             const baseName = efName.replace(/(_B0|_I0|_BI0|_0)\.ttf$/i, '');
-            if (baseName.toLowerCase().startsWith('assdrawsubset')) continue;
+            if (baseName.toLowerCase().startsWith('assdrawsubset')) {
+              if (entry.parsed.hasDrawTable) strippableCount++;
+              continue;
+            }
             strippableCount++;
             const isUnknownRand = /^[A-Z0-9]{8}$/.test(baseName) && !entry.parsed.randFontMap?.[baseName];
             if (isUnknownRand) unknownRandCount++;
@@ -5272,6 +5335,7 @@
       S.converting = true;
       S.outputBlobs = [];
       S.fontBuffers = [];
+      S.fileFontBuffers = [];
       _convertResultsState = [];
 
       const wantDraw = document.getElementById('opt-draw').checked;
@@ -5354,6 +5418,34 @@
             const doneLine = box.lastElementChild;
             const stripLines = result.stats.strippedNames.map(name => t('log.font.strip.item', { name }));
             logExpandable(t('log.font.strip.expand', { count: result.stats.strippedNames.length }), stripLines, doneLine);
+          }
+
+          if (wantStrip && result.stats.drawRestoreLog) {
+            const dr = result.stats.drawRestoreLog;
+            const box = document.getElementById('log-box');
+            const doneLine = box.lastElementChild;
+            if (dr.type === 'no_table') {
+              const msg = document.createElement('div');
+              msg.className = 'log-line log-warn';
+              msg.textContent = t('log.draw.strip.no_table', { name: dr.name });
+              box.insertBefore(msg, doneLine);
+            } else if (dr.type === 'full') {
+              const msg = document.createElement('div');
+              msg.className = 'log-line log-ok';
+              msg.textContent = t('log.draw.strip.full', { name: dr.name, count: dr.restoredCount });
+              box.insertBefore(msg, doneLine);
+            } else if (dr.type === 'partial') {
+              const lines = dr.retainedChars.map(ch => t('log.draw.strip.partial.item', { char: ch }));
+              logExpandable(t('log.draw.strip.partial', { name: dr.name, restored: dr.restoredCount, retained: dr.retainedCount }), lines, doneLine);
+            } else if (dr.type === 'unrestorable') {
+              const lines = dr.retainedChars.map(ch => t('log.draw.strip.partial.item', { char: ch }));
+              logExpandable(t('log.draw.strip.unrestorable', { name: dr.name, retained: dr.retainedCount }), lines, doneLine);
+            } else if (dr.type === 'orphan_purge') {
+              const msg = document.createElement('div');
+              msg.className = 'log-line log-ok';
+              msg.textContent = t('log.draw.strip.orphan_purge', { name: dr.name });
+              box.insertBefore(msg, doneLine);
+            }
           }
 
           const origKB = (result.origSize / 1024).toFixed(0);
