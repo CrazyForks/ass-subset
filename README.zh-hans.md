@@ -57,6 +57,10 @@
 
 > **注意：** 绘图指令转换后，特效的大小或位置可能发生轻微偏移，建议手动检查最终效果。
 
+## 技术规范
+
+本工具实现了多项创新规范以支持字体嵌入与绘图指令优化，包括绘图指令无损还原规范、字体随机化命名与映射还原规范等。详细的技术细节、数据结构、字形分配规则与还原流程请参阅[《技术规范文档》](./docs/SPECIFICATIONS.zh-hans.md)。
+
 ## 技术依赖
 
 | 依赖 | 版本 | 许可证 | 用途 |
@@ -82,13 +86,16 @@ ass-subset/
 │   │   ├── opentype.min.js            # opentype.js 本地副本
 │   │   └── jszip.min.js               # JSZip 本地副本
 │   └── icons/                         # 应用图标
+├── docs/                              # 技术文档
+│   ├── SPECIFICATIONS.md              # 技术规范（英文）
+│   └── SPECIFICATIONS.zh-hans.md      # 技术规范（中文）
 ├── scripts/                           # 实用脚本
 │   └── python/                        # Python 诊断工具
 │       ├── draw_font_inspector.py     # 诊断绘图指令字体
 │       └── font_name_inspector.py     # 分析字体 name 表
 ├── LICENSE                            # MIT 许可证
 ├── README.md                          # 英文说明
-└── README.zh-hans.md                  # 中文说明（本文件）
+└── README.zh-hans.md                  # 中文说明
 ```
 
 ## 本地化
@@ -115,6 +122,7 @@ ass-subset/
 <summary><strong>核心团队</strong></summary>
 
 - **小P** ([@mtsubs](https://github.com/mtsubs)) — 项目首席开发者，前端样式设计，后端逻辑开发
+- **NickCollect** — 前端样式设计
 
 </details>
 
