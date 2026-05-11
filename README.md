@@ -128,7 +128,7 @@ Join us in [Issues](https://github.com/MontageSubs/ass-subset/issues) and [Discu
 <summary><strong>Core Team</strong></summary>
 
 - **Meow P** ([@mtsubs](https://github.com/mtsubs/)) — Lead Developer, Frontend Design, Backend Development
-- **NickCollect** — Frontend Design
+- **NickCollect** ([@NickCollect](https://github.com/NickCollect/)) — Frontend Design
 
 </details>
 
