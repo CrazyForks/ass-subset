@@ -122,7 +122,7 @@ ass-subset/
 <summary><strong>核心团队</strong></summary>
 
 - **小P** ([@mtsubs](https://github.com/mtsubs)) — 项目首席开发者，前端样式设计，后端逻辑开发
-- **NickCollect** — 前端样式设计
+- **NickCollect** ([@NickCollect](https://github.com/NickCollect/))  — 前端样式设计
 
 </details>
 
