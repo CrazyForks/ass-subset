@@ -6,12 +6,6 @@
 
 </div><br/>
 
-<div align="center">
-
-| [打开工具](https://subs.js.org/ass-subset/) | [提交反馈](https://github.com/MontageSubs/ass-subset/issues) | [参与讨论](https://github.com/MontageSubs/ass-subset/discussions) |
-| :---: | :---: | :---: |
-
-</div><br/>
 
 ## 绘图指令无损还原规范
 
