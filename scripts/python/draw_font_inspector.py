@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ============================================================================
 # Name: draw_font_inspector.py
-# Version: 1.3
+# Version: 1.3.1
 # Organization: MontageSubs (蒙太奇字幕组)
 # Contributors: Meow P (小p)
 # License: MIT License
@@ -101,7 +101,7 @@ def parse_field(data, offset, field_def):
     field_name = field_def['name']
     length_type = field_def['length_type']
     data_type = field_def['data_type']
-    
+
     if data_type == 'bitfield':
         field_size = field_def['size']
         if offset + field_size > len(data):
@@ -117,16 +117,16 @@ def parse_field(data, offset, field_def):
             else:
                 field_values[subfield['name']] = bool(value)
         return field_values, offset + field_size
-    
+
     length, len_header_size, data_offset = read_length_value(data, offset, length_type)
     if length is None:
         return None, None
-    
+
     if data_offset + length > len(data):
         return None, None
-    
+
     field_data = data[data_offset:data_offset+length]
-    
+
     if data_type == 'utf8':
         try:
             field_value = field_data.decode('utf-8')
@@ -134,7 +134,7 @@ def parse_field(data, offset, field_def):
             field_value = field_data.decode('utf-8', errors='replace')
     else:
         field_value = field_data
-    
+
     return field_value, data_offset + length
 
 def main():
@@ -149,70 +149,70 @@ def main():
         font_file = arg
     else:
         font_file = 'ASSDrawSubset_0.ttf'
-    
+
     if not os.path.exists(font_file):
         print(f"Error: Font file '{font_file}' not found.")
         print("\nUsage: python draw_font_inspector.py [font_file]")
         print(f"       python draw_font_inspector.py -h")
         sys.exit(1)
-    
+
     from fontTools.ttLib import TTFont
-    
+
     try:
         font = TTFont(font_file)
     except Exception as e:
         print(f"Error: Failed to load font file '{font_file}'")
         print(f"Details: {str(e)}")
         sys.exit(1)
-    
+
     print(f"Draw Font Inspector v{VERSION} - Drawing Commands Font Inspector")
     print("=" * 50)
     print(f"Font file: {font_file}")
     print(f"Total tables: {len(font)}\n")
-    
+
     print("Tables:")
     for table_name in sorted(font.keys()):
         print(f"  {table_name}")
-    
+
     if 'draw' in font:
         print("\n" + "=" * 50)
         print("draw table found")
         print("=" * 50)
-        
+
         try:
             draw_table = font['draw']
             data = draw_table.data
-            
+
             if len(data) < 4:
                 print("Error: draw table data too short")
                 sys.exit(1)
-            
+
             offset = 0
             entry_count = struct.unpack('>I', data[offset:offset+4])[0]
             print(f"Entry count: {entry_count}\n")
             offset += 4
-            
+
             for i in range(entry_count):
                 entry_data = {}
                 entry_offset = offset
                 parse_error = False
-                
+
                 for field_def in DRAW_TABLE_SCHEMA:
                     field_value, new_offset = parse_field(data, entry_offset, field_def)
-                    
+
                     if field_value is None:
                         print(f"Error: Failed to parse field '{field_def['name']}' at entry {i}, offset {entry_offset}")
                         parse_error = True
                         break
-                    
+
                     entry_data[field_def['name']] = field_value
                     entry_offset = new_offset
-                
+
                 if parse_error:
                     break
-                
+
                 offset = entry_offset
-                
+
                 print(f"Entry {i}:")
                 for field_def in DRAW_TABLE_SCHEMA:
                     field_name = field_def['name']
@@ -223,7 +223,7 @@ def main():
                     else:
                         print(f"  {field_name}: {entry_data[field_name]}")
                 print()
-        
+
         except Exception as e:
             print(f"Error: Failed to parse draw table")
             print(f"Details: {str(e)}")
