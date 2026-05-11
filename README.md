@@ -63,6 +63,10 @@ The ASS/SSA format allows subtitle creators to use custom fonts to enhance visua
 
 > **Note:** Converting draw commands may cause minor position or scale shifts. Always verify the final render.
 
+## Technical Specifications
+
+This tool implements multiple innovative standards to support font embedding and drawing command optimization, including drawing command lossless restoration specification, font randomized naming and mapping restoration specification, and more. For detailed technical information including data structures, glyph allocation rules, and restoration procedures, please refer to the [Technical Specifications Documentation](./docs/SPECIFICATIONS.md).
+
 ## Dependencies
 
 | Dependency | Version | License | Purpose |
@@ -88,6 +92,9 @@ ass-subset/
 │   │   ├── opentype.min.js            # Font parsing library
 │   │   └── jszip.min.js               # ZIP compression library
 │   └── icons/                         # App icons (PWA assets)
+├── docs/                              # Technical Documentation
+│   ├── SPECIFICATIONS.md              # Technical Specifications (English)
+│   └── SPECIFICATIONS.zh-hans.md      # Technical Specifications (Chinese)
 ├── scripts/                           # Utility scripts
 │   └── python/                        # Python diagnostic tools
 │       ├── draw_font_inspector.py     # Diagnoses the drawing command font
@@ -121,6 +128,7 @@ Join us in [Issues](https://github.com/MontageSubs/ass-subset/issues) and [Discu
 <summary><strong>Core Team</strong></summary>
 
 - **Meow P** ([@mtsubs](https://github.com/mtsubs/)) — Lead Developer, Frontend Design, Backend Development
+- **NickCollect** — Frontend Design
 
 </details>
 
