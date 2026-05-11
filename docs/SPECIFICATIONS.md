@@ -1,5 +1,18 @@
 # Technical Specifications
 
+<div align="right">
+
+**[中文](./SPECIFICATIONS.zh-hans.md) | English**
+
+</div><br/>
+
+<div align="center">
+
+| [Open Tool](https://subs.js.org/ass-subset/) | [Report an Issue](https://github.com/MontageSubs/ass-subset/issues) | [Join the Discussion](https://github.com/MontageSubs/ass-subset/discussions) |
+| :---: | :---: | :---: |
+
+</div><br/>
+
 ## Lossless Vector Drawing Restoration
 
 **Supported Version**: v2.7+
@@ -176,7 +189,7 @@ After replacement, remove all embedded font files from the subtitle. The player 
 |----------|--------|-------|
 | First | Font ID 10 table | More reliable; immune to accidental deletion |
 | Second | ASS comments | Fallback method |
-| None | Both absent | Tool removes font without name substitution; manual review needed |
+| None | Both absent | Skips removal; alerts user that font cannot be removed |
 
 ### Verification & Debugging
 
