@@ -1,6 +1,17 @@
-
-
 # 技术规范
+
+<div align="right">
+
+**中文 | [English](./SPECIFICATIONS.md)**
+
+</div><br/>
+
+<div align="center">
+
+| [打开工具](https://subs.js.org/ass-subset/) | [提交反馈](https://github.com/MontageSubs/ass-subset/issues) | [参与讨论](https://github.com/MontageSubs/ass-subset/discussions) |
+| :---: | :---: | :---: |
+
+</div><br/>
 
 ## 绘图指令无损还原规范
 
@@ -178,7 +189,7 @@ FontSubsetMap: {original: Arial, subset: QTSGQJIO, ass-subset: 2.6}
 |--------|------|------|
 | 第 1 优先 | 字体 ID 10 表 | 更可靠，不易被意外删除 |
 | 第 2 优先 | ASS 注释 | 备用方案 |
-| 无映射 | 两处均无 | 工具直接删除字体但不进行名称替换；用户需手动检查 |
+| 无映射 | 两处均无 | 不进行任何操作，并提示用户该字体无法移除 |
 
 ### 验证与调试
 
