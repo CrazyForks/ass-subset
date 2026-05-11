@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ============================================================================
 # Name: font_name_inspector.py
-# Version: 1.1
+# Version: 1.2
 # Organization: MontageSubs (蒙太奇字幕组)
 # Contributors: Meow P (小p)
 # License: MIT License
@@ -32,8 +32,6 @@ import sys
 import os
 import re
 import struct
-from fontTools.ttLib import TTFont
-from fontTools.ttLib.ttCollection import TTCollection
 
 PLATFORM = {
     0: "Unicode", 1: "macOS", 2: "ISO", 3: "Windows", 4: "Custom", 5: "UNIX"
@@ -111,7 +109,9 @@ VERSION = extract_version()
 
 def check_dependencies():
     try:
-        import fontTools.ttLib
+        from fontTools.ttLib import TTFont
+        from fontTools.ttLib.ttCollection import TTCollection
+        return TTFont, TTCollection
     except ImportError:
         print("Error: fontTools is not installed.")
         print("  pip install fontTools")
@@ -123,15 +123,15 @@ class FontAnalyzer:
         self.is_ttc = False
         self.columns_cache = None
         self.validate_file()
-    
+
     def validate_file(self):
         try:
             if not os.path.exists(self.font_path):
                 raise FileNotFoundError(f"Font file not found: {self.font_path}")
-            
+
             if not os.access(self.font_path, os.R_OK):
                 raise PermissionError(f"Permission denied: {self.font_path}")
-            
+
             with open(self.font_path, 'rb') as f:
                 tag = f.read(4)
                 if tag == b'ttcf':
@@ -145,7 +145,7 @@ class FontAnalyzer:
         except Exception as e:
             print(f"Error: Failed to validate font: {str(e)}")
             sys.exit(1)
-    
+
     def analyze(self):
         try:
             if self.is_ttc:
@@ -155,7 +155,7 @@ class FontAnalyzer:
         except Exception as e:
             print(f"Error: {str(e)}")
             sys.exit(1)
-    
+
     def _analyze_ttc(self):
         try:
             ttc = TTCollection(self.font_path)
@@ -163,12 +163,12 @@ class FontAnalyzer:
             raise RuntimeError("Invalid TTC format")
         except Exception as e:
             raise RuntimeError(f"Failed to load TTC: {str(e)}")
-        
+
         print(f"Font Name Inspector v{VERSION}")
         print("=" * SEPARATOR_WIDTH)
         print(f"Font file: {self.font_path}")
         print(f"Type: TTC Collection ({len(ttc)} fonts)\n")
-        
+
         for i, font in enumerate(ttc):
             print(f"=== Font {i} ===\n")
             self._show_tables(font)
@@ -176,96 +176,96 @@ class FontAnalyzer:
             self._analyze_name_table(font)
             if i < len(ttc) - 1:
                 print("\n" + "=" * SEPARATOR_WIDTH + "\n")
-    
+
     def _analyze_ttf(self):
         try:
             font = TTFont(self.font_path)
         except Exception as e:
             raise RuntimeError(f"Failed to load TTF: {str(e)}")
-        
+
         print(f"Font Name Inspector v{VERSION}")
         print("=" * SEPARATOR_WIDTH)
         print(f"Font file: {self.font_path}")
         print(f"Type: TTF")
-        
+
         self._show_tables(font)
         print()
         self._analyze_name_table(font)
-    
+
     def _show_tables(self, font):
         tables = sorted(font.keys())
         print(f"Total tables: {len(tables)}")
         print("Tables:")
         for table in tables:
             print(f"  {table}")
-    
+
     def _analyze_name_table(self, font):
         if 'name' not in font:
             print("Warning: 'name' table not found")
             return
-        
+
         try:
             name_table = font['name']
             records = sorted(name_table.names, key=lambda x: (x.nameID, x.platformID, x.langID))
         except Exception as e:
             raise RuntimeError(f"Failed to read name table: {str(e)}")
-        
+
         if not records:
             print("Warning: No name records found")
             return
-        
+
         self._cache_active_columns(records)
         values = [[self._get_column_value(col, record) for col in self.columns_cache] for record in records]
         widths = self._calculate_widths(self.columns_cache, values)
-        
+
         print(f"\nname table ({len(records)} entries)\n")
-        
+
         header = " | ".join(f"{col:<{widths[col]}}" for col in self.columns_cache)
         separator = "-" * SEPARATOR_WIDTH
         print(header)
         print(separator)
-        
+
         prev_id = None
         for record, row_values in zip(records, values):
             if prev_id is not None and record.nameID != prev_id:
                 print(separator)
-            
+
             row = " | ".join(f"{val:<{widths[col]}}" for col, val in zip(self.columns_cache, row_values))
             print(row)
             prev_id = record.nameID
-    
+
     def _cache_active_columns(self, records):
         if self.columns_cache is not None:
             return
-        
+
         columns = []
-        
+
         if all(hasattr(r, 'nameID') for r in records):
             columns.append('NameID')
-        
+
         if all(hasattr(r, 'platformID') for r in records):
             columns.append('Platform')
-        
+
         if all(hasattr(r, 'platEncID') for r in records):
             columns.append('Encoding')
-        
+
         if all(hasattr(r, 'langID') for r in records):
             columns.append('Language')
-        
+
         if any(hasattr(r, 'varID') and r.varID for r in records):
             columns.append('VarID')
-        
+
         columns.append('Value')
-        
+
         self.columns_cache = columns
-    
+
     def _calculate_widths(self, columns, values):
         widths = {col: min(len(col), MAX_COLUMN_WIDTH) for col in columns}
         for row in values:
             for col, val in zip(columns, row):
                 widths[col] = min(max(widths[col], len(val)), MAX_COLUMN_WIDTH)
         return widths
-    
+
     def _get_column_value(self, col, record):
         if col == 'NameID':
             return str(record.nameID)
@@ -281,9 +281,9 @@ class FontAnalyzer:
             return str(getattr(record, 'varID', '-'))
         elif col == 'Value':
             return self._extract_value(record)
-        
+
         return "-"
-    
+
     def _extract_value(self, record):
         try:
             return record.toUnicode()
@@ -299,21 +299,21 @@ def main():
         print("Error: Font file not specified.")
         print("Usage: python font_name_inspector.py <font_file>")
         sys.exit(1)
-    
+
     arg = sys.argv[1]
-    
+
     if arg in ['-h', '--help']:
         print(f"Font Name Inspector v{VERSION} - Font Metadata Inspector")
         print("Usage: python font_name_inspector.py <font_file>")
         sys.exit(0)
-    
+
     if arg in ['-v', '--version']:
         print(f"Font Name Inspector v{VERSION}")
         sys.exit(0)
-    
+
     analyzer = FontAnalyzer(arg)
     analyzer.analyze()
 
 if __name__ == '__main__':
-    check_dependencies()
+    TTFont, TTCollection = check_dependencies()
     main()
