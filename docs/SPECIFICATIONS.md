@@ -6,13 +6,6 @@
 
 </div><br/>
 
-<div align="center">
-
-| [Open Tool](https://subs.js.org/ass-subset/) | [Report an Issue](https://github.com/MontageSubs/ass-subset/issues) | [Join the Discussion](https://github.com/MontageSubs/ass-subset/discussions) |
-| :---: | :---: | :---: |
-
-</div><br/>
-
 ## Lossless Vector Drawing Restoration
 
 **Supported Version**: v2.7+
