@@ -1332,6 +1332,17 @@ function repairFontBuffer(u8) {
     const offset = outView.getUint32(base + 8, false);
     const length = outView.getUint32(base + 12, false);
     if (offset + length > out.length) continue;
+    if (tag === 0x4F532F32 && length >= 2) {
+      const os2VersionBySize = { 78: 0, 86: 1, 96: 2, 100: 5 };
+      const correctVersion = os2VersionBySize[length];
+      if (correctVersion !== undefined) {
+        const storedVersion = (out[offset] << 8) | out[offset + 1];
+        if (storedVersion !== correctVersion) {
+          out[offset] = (correctVersion >> 8) & 0xFF;
+          out[offset + 1] = correctVersion & 0xFF;
+        }
+      }
+    }
     let cs;
     if (tag === 0x68656164) {
       const savedCSA = [out[offset+8], out[offset+9], out[offset+10], out[offset+11]];
