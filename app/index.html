@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.1">
+  <meta name="version" content="2.7.2">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -1627,7 +1627,7 @@
           <span class="opt-tag">TTF / OTF / TTC / OTC / WOFF / WOFF2</span>
         </label>
         <label class="opt-row opt-row-sub hidden" id="opt-row-ascii">
-          <input type="checkbox" id="opt-ascii" checked aria-describedby="opt-ascii-desc">
+          <input type="checkbox" id="opt-ascii" aria-describedby="opt-ascii-desc">
           <div class="opt-label">
             <strong data-i18n="opt.ascii.title">Include ASCII Characters</strong>
             <span id="opt-ascii-desc" data-i18n="opt.ascii.desc">Retain all available ASCII characters from the original font in the subset, improving compatibility across media players.</span>
@@ -4615,7 +4615,17 @@
       createExpandableRow(t('analysis.font.label'),
         hasFonts ? 'badge-ok' : 'badge-info',
         hasFonts ? t('font.chars', { n: totalChars }) : t('analysis.font.none'),
-        hasFonts ? buildFontDetailLines(Array.from(totalExtFonts), extFontSources) : [t('analysis.font.none')]
+        hasFonts ? (() => {
+          const _c2r = new Map();
+          for (const entry of S.assFiles) {
+            if (entry.parsed.randFontMap) {
+              for (const [rand, orig] of Object.entries(entry.parsed.randFontMap)) _c2r.set(orig.toLowerCase(), rand);
+            }
+          }
+          const _displaySources = new Map();
+          for (const [n, s] of extFontSources) { const r = _c2r.get(n.toLowerCase()); _displaySources.set(r ? `${n} (${r})` : n, s); }
+          return buildFontDetailLines(Array.from(totalExtFonts).map(n => { const r = _c2r.get(n.toLowerCase()); return r ? `${n} (${r})` : n; }), _displaySources);
+        })() : [t('analysis.font.none')]
       );
 
       createExpandableRow(t('analysis.font.sys.label'),
@@ -4838,6 +4848,12 @@
       const wantFont = document.getElementById('opt-font').checked;
       const wantSys = document.getElementById('opt-sysfont').checked;
       const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
+      const canonicalToRand = new Map();
+      for (const entry of S.assFiles) {
+        if (entry.parsed.randFontMap) {
+          for (const [rand, orig] of Object.entries(entry.parsed.randFontMap)) canonicalToRand.set(orig.toLowerCase(), rand);
+        }
+      }
       for (const entry of S.assFiles) {
         const sources = [];
         if (wantFont) sources.push(...Object.entries(entry.parsed.externalFonts).map(([n,i]) => [n,i,false]));
@@ -4927,8 +4943,10 @@
         hdr.className = 'fi-header';
         const nameEl = document.createElement('span');
         nameEl.className = 'fi-name';
-        nameEl.title = name;
-        nameEl.textContent = name;
+        const randAlias = canonicalToRand.get(key);
+        const displayFontName = randAlias ? `${name} (${randAlias})` : name;
+        nameEl.title = displayFontName;
+        nameEl.textContent = displayFontName;
         hdr.appendChild(nameEl);
         if (isPrimaryAlias) {
           const primaryAliases = mergeInfo.aliases
@@ -5089,6 +5107,14 @@
           for (const name of Object.keys(entry.parsed.systemFontsReferenced)) requiredFonts.add(name);
         }
       }
+      const randToCanonical = new Map();
+      for (const entry of S.assFiles) {
+        if (entry.parsed.randFontMap) {
+          for (const [rand, orig] of Object.entries(entry.parsed.randFontMap)) {
+            if (requiredFonts.has(orig)) { randToCanonical.set(rand.toLowerCase(), orig); requiredFonts.add(rand); }
+          }
+        }
+      }
       const reqArr = Array.from(requiredFonts);
       const FILE_SIZE_LIMIT_FONT = 2 * 1024 * 1024 * 1024;
       const fontEntries = [];
@@ -5156,6 +5182,8 @@
             const matchNames = result.results.map(r => r.matchedFor).join(', ');
             const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
             for (const match of result.results) {
+              const _randCanon = randToCanonical.get(match.matchedFor.toLowerCase());
+              if (_randCanon) match.matchedFor = _randCanon;
               const nameKey = match.matchedFor.toLowerCase();
               const fontRecord = {
                 file: entry.file, buffer: entry.buffer.slice(0), matchedFor: match.matchedFor,
