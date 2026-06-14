@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8-beta1">
+  <meta name="version" content="2.8-beta2">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -1700,21 +1700,25 @@
         <span class="step-subtitle">Convert & Download</span>
       </div>
       <div class="step-body">
-        <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
-          <button class="btn btn-primary" id="btn-convert" data-i18n="btn.convert">Start Conversion</button>
-          <button class="btn btn-success hidden" id="btn-download" data-i18n="btn.download">Download Output</button>
-          <label class="btn btn-outline hidden" id="opt-optimize-wrap"
-            style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
-            <input type="checkbox" id="opt-append-optimize" checked aria-labelledby="opt-append-optimize-lbl"
-              style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
-            <span id="opt-append-optimize-lbl" data-i18n="opt.append_optimize">Add _optimized suffix</span>
-          </label>
-          <label class="btn btn-outline hidden" id="opt-separate-fonts-wrap"
-            style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
-            <input type="checkbox" id="opt-separate-fonts" aria-labelledby="opt-separate-fonts-lbl"
-              style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
-            <span id="opt-separate-fonts-lbl" data-i18n="opt.separate_fonts">Separate subtitle and fonts</span>
-          </label>
+        <div class="flex-gap" style="flex-direction: column; align-items: stretch;">
+          <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="btn-convert" data-i18n="btn.convert">Start Conversion</button>
+            <button class="btn btn-success hidden" id="btn-download" data-i18n="btn.download">Download Output</button>
+          </div>
+          <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
+            <label class="btn btn-outline hidden" id="opt-optimize-wrap"
+              style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
+              <input type="checkbox" id="opt-append-optimize" checked aria-labelledby="opt-append-optimize-lbl"
+                style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
+              <span id="opt-append-optimize-lbl" data-i18n="opt.append_optimize">Add _optimized suffix</span>
+            </label>
+            <label class="btn btn-outline hidden" id="opt-separate-fonts-wrap"
+              style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
+              <input type="checkbox" id="opt-separate-fonts" aria-labelledby="opt-separate-fonts-lbl"
+                style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
+              <span id="opt-separate-fonts-lbl" data-i18n="opt.separate_fonts">Separate Subtitles and Fonts</span>
+            </label>
+          </div>
         </div>
         <div id="progress-area" class="hidden">
           <div class="progress-wrap">
@@ -2127,7 +2131,7 @@
         'opt.strip.desc': '移除字幕中已有的內嵌字型，並回復可逆的繪圖命令',
         'opt.strip.title': '移除內嵌字型',
         'opt.append_optimize': '追加 _optimized 後綴',
-        'opt.separate_fonts': '字幕與字體分離',
+        'opt.separate_fonts': '字幕與字型分離',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
         'path.mac': 'macOS：/Library/Fonts（建議先複製到桌面再上傳）',
         'path.win': 'Windows：C:\\Windows\\Fonts（建議先複製到桌面再上傳）',
@@ -2314,7 +2318,7 @@
         'opt.strip.desc': 'Remove existing embedded fonts from the subtitle and revert reversible draw commands.',
         'opt.strip.title': 'Remove Embedded Fonts',
         'opt.append_optimize': 'Add _optimized suffix',
-        'opt.separate_fonts': 'Separate subtitle and fonts',
+        'opt.separate_fonts': 'Separate Subtitles and Fonts',
         'path.linux': 'Linux: ~/.fonts or /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (copy to Desktop before uploading)',
         'path.win': 'Windows: C:\\Windows\\Fonts (copy to Desktop before uploading)',
@@ -3623,7 +3627,7 @@
         'opt.strip.desc': 'Altyazıdaki mevcut gömülü yazı tiplerini kaldırır ve geri alınabilir çizim komutlarını geri yükler.',
         'opt.strip.title': 'Gömülü Fontları Kaldır',
         'opt.append_optimize': '_optimized son ekini ekle',
-        'opt.separate_fonts': 'Altyazı ve yazı tiplerini ayır',
+        'opt.separate_fonts': 'Altyazı ve fontları ayır',
         'path.linux': 'Linux: ~/.fonts veya /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (yüklemeden önce masaüstüne kopyalayın)',
         'path.win': 'Windows: C:\\Windows\\Fonts (yüklemeden önce masaüstüne kopyalayın)',

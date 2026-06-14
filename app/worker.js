@@ -1830,7 +1830,7 @@ function applyRandFontNamesInLine(line, randFontNames) {
   return result;
 }
 function rewriteASS(rawContent, opts, id) {
-  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
+  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
   const nl = targetNewline || '\n';
   const blocks = rawContent.split(SECTION_SPLIT_RE);
   const totalBlocks = blocks.length;
@@ -1929,7 +1929,7 @@ function rewriteASS(rawContent, opts, id) {
 
   let finalSec = null;
   const hasRetainFonts = retainRawFonts && retainRawFonts.length > 0;
-  if (!wantStrip && wantEmbed !== false && (drawTTF || (embeddedFonts && embeddedFonts.length > 0))) {
+  if (!wantStrip && (drawTTF || (embeddedFonts && embeddedFonts.length > 0))) {
     const newFontLines = ['[Fonts]'];
     const encodeAndAppend = (embName, ttfData) => {
       newFontLines.push(`fontname: ${embName}`);
@@ -2603,7 +2603,6 @@ async function doConvert(data, id) {
     drawCharRemap: drawCharRemap,
     targetNewline: parsed.detectedNewline,
     wantStrip: options.wantStrip,
-    wantEmbed: options.wantEmbed !== false,
     activeRandMap: randFontNames,
     randFontNames: rewriteRandFontNames,
     retainRawFonts,
