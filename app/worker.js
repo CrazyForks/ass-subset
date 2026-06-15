@@ -317,8 +317,7 @@ function parseASSText(text, id, forceHasBOM) {
         const buf = assUUDecode(embLines);
         const desc = readFontDescriptionRaw(buf.buffer);
         if (desc) {
-          const m = desc.match(fontInternalMapRe);
-          if (m) {
+          for (const m of desc.matchAll(new RegExp(fontInternalMapRe, 'g'))) {
             const origName = m[1].trim();
             const subsetName = m[2].trim();
             if (!discoveredFromId10[subsetName]) discoveredFromId10[subsetName] = origName;
@@ -1431,6 +1430,20 @@ function modifyNameTable(buffer, newNames) {
     return new Uint8Array(bytes);
   };
 
+  const FAMILY_NAME_IDS = new Set([NAME_ID_MAP.fontFamily, NAME_ID_MAP.fullName, NAME_ID_MAP.preferredFamily]);
+  const decodeRecordValue = (platformID, absOff, len) => {
+    if (len <= 0 || absOff < 0 || absOff + len > buffer.byteLength) return '';
+    const bytes = new Uint8Array(buffer, absOff, len);
+    if (platformID === 3 || platformID === 0) {
+      let s = '';
+      for (let i = 0; i + 1 < bytes.length; i += 2) s += String.fromCharCode((bytes[i] << 8) | bytes[i + 1]);
+      return s.trim();
+    }
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return s.trim();
+  };
+
   for (let i = 0; i < count; i++) {
     const rec = nameTableOffset + 6 + i * 12;
     const platformID = view.getUint16(rec, false);
@@ -1441,7 +1454,13 @@ function modifyNameTable(buffer, newNames) {
     const origStrOff = view.getUint16(rec + 10, false);
 
     let bytes = null;
-    for (const [field, entries] of Object.entries(newNames)) {
+    if (newNames._familyValueMap && FAMILY_NAME_IDS.has(nameID)) {
+      const origAbsOff = nameTableOffset + storageOffset + origStrOff;
+      const origVal = decodeRecordValue(platformID, origAbsOff, origLen);
+      const mapped = newNames._familyValueMap[origVal];
+      if (mapped !== undefined) bytes = resolveValue({ en: mapped }, platformID, encodingID);
+    }
+    if (!bytes) for (const [field, entries] of Object.entries(newNames)) {
       if (NAME_ID_MAP[field] === nameID) {
         bytes = resolveValue(entries, platformID, encodingID);
         break;
@@ -1830,7 +1849,7 @@ function applyRandFontNamesInLine(line, randFontNames) {
   return result;
 }
 function rewriteASS(rawContent, opts, id) {
-  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
+  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
   const nl = targetNewline || '\n';
   const blocks = rawContent.split(SECTION_SPLIT_RE);
   const totalBlocks = blocks.length;
@@ -1846,7 +1865,9 @@ function rewriteASS(rawContent, opts, id) {
     const trimmed = block.trim();
     if (!trimmed) continue;
     const header = (trimmed.match(/^\[([^\]]+)\]/i)?.[1] || '').toLowerCase();
-    if (header === 'fonts') continue;
+    if (header === 'fonts') {
+      if (!wantEmbed || !embeddedFonts || embeddedFonts.length === 0) continue;
+    }
     if (header === 'script info') {
       const lines = block.split(/\r?\n/);
       const cleanLines = lines.filter(l => !/^;\s*Font Subset:/i.test(l.trim()));
@@ -1929,7 +1950,7 @@ function rewriteASS(rawContent, opts, id) {
 
   let finalSec = null;
   const hasRetainFonts = retainRawFonts && retainRawFonts.length > 0;
-  if (!wantStrip && (drawTTF || (embeddedFonts && embeddedFonts.length > 0))) {
+  if (!wantStrip && wantEmbed !== false && (drawTTF || (embeddedFonts && embeddedFonts.length > 0))) {
     const newFontLines = ['[Fonts]'];
     const encodeAndAppend = (embName, ttfData) => {
       newFontLines.push(`fontname: ${embName}`);
@@ -2305,7 +2326,7 @@ async function doConvert(data, id) {
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: 'normal', chars: allChars.length });
       try {
         const result = await subsetFont(best.buffer, allChars, fontNameStr, best.isTTC, 'normal', best.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
-        embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: best.weight, weightSlot: 'normal', subfamilyName: best.subfamilyName || '' });
+        embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: best.weight, weightSlot: 'normal', subfamilyName: best.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: 'normal', origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
         emitLog(id, 'log.font.subset_fail', 'err', { name: fontNameStr, error: e.message });
@@ -2371,7 +2392,7 @@ async function doConvert(data, id) {
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: wLabel, chars: mergedChars.length });
       try {
         const result = await subsetFont(candidate.buffer, mergedChars, fontNameStr, candidate.isTTC, primarySlot.key, candidate.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
-        embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: candidate.weight, weightSlot: primarySlot.key, subfamilyName: candidate.subfamilyName || '' });
+        embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: candidate.weight, weightSlot: primarySlot.key, subfamilyName: candidate.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: wLabel, origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
         emitLog(id, 'log.font.subset_fail', 'err', { name: fontNameStr, error: e.message });
@@ -2491,7 +2512,10 @@ async function doConvert(data, id) {
   })();
   let randFontNames = null;
   let rewriteRandFontNames = null;
-  const freshlySubsettedNames = new Set(embeddedFonts.map(ef => ef.name.replace(/(_B|_I|_BI)$/, '')));
+  const freshlySubsettedNames = new Set(embeddedFonts.flatMap(ef => {
+    const base = ef.name.replace(/(_B|_I|_BI)$/, '');
+    return [base, ...(ef.aliasNames || [])];
+  }));
 
   if (options.wantRandFont && !options.wantStrip) {
     const usedNames = new Set();
@@ -2505,18 +2529,21 @@ async function doConvert(data, id) {
       }
     }
 
-    for (const orig of freshlySubsettedNames) {
-      if (isAnyDrawFont(orig.toLowerCase())) continue;
-      let rand;
-      const origLower = orig.toLowerCase();
-
-      if (oldOrigToRand[origLower]) {
-        rand = oldOrigToRand[origLower];
-      } else {
-        do { rand = genRandFontName(); } while (usedNames.has(rand));
-        usedNames.add(rand);
+    for (const ef of embeddedFonts) {
+      const baseOrig = ef.name.replace(/(_B|_I|_BI)$/, '');
+      const origs = isAnyDrawFont(baseOrig.toLowerCase()) ? [] : [baseOrig, ...(ef.aliasNames || [])];
+      for (const orig of origs) {
+        const origLower = orig.toLowerCase();
+        if (randFontNames.some(e => e.orig.toLowerCase() === origLower)) continue;
+        let rand;
+        if (oldOrigToRand[origLower]) {
+          rand = oldOrigToRand[origLower];
+        } else {
+          do { rand = genRandFontName(); } while (usedNames.has(rand));
+          usedNames.add(rand);
+        }
+        randFontNames.push({ orig, rand });
       }
-      randFontNames.push({ orig, rand });
     }
 
     const origToRandMap = new Map(randFontNames.map(e => [e.orig.toLowerCase(), e]));
@@ -2528,15 +2555,23 @@ async function doConvert(data, id) {
       if (isFresh) {
         const entry = origToRandMap.get(baseName.toLowerCase());
         if (entry) {
+          const pairs = [entry];
+          for (const alias of (ef.aliasNames || [])) {
+            const aliasEntry = origToRandMap.get(alias.toLowerCase());
+            if (aliasEntry) pairs.push(aliasEntry);
+          }
           const newBaseName = ef.name.replace(new RegExp('^' + entry.orig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), entry.rand);
-          const mapLine = `FontSubsetMap: {original: ${entry.orig}, subset: ${entry.rand}, ass-subset: ${APP_VERSION}}`;
-          const descEntry = { en: `${mapLine}; ASS Subsetter (${PROJECT_URL})` };
+          const mapLines = pairs.map(p => `FontSubsetMap: {original: ${p.orig}, subset: ${p.rand}, ass-subset: ${APP_VERSION}}`).join('\n');
+          const descEntry = { en: `${mapLines}; ASS Subsetter (${PROJECT_URL})` };
+          const familyValueMap = {};
+          for (const p of pairs) familyValueMap[p.orig] = p.rand;
           ef.ttf = repairFontBuffer(new Uint8Array(modifyNameTable(ef.ttf.buffer, {
             fontFamily: { en: entry.rand },
             preferredFamily: { en: entry.rand },
             fullName: { en: entry.rand },
             postScriptName: { en: entry.rand.replace(/\s+/g, '') },
             description: descEntry,
+            _familyValueMap: familyValueMap,
           })));
           ef.name = newBaseName;
         }
@@ -2603,6 +2638,7 @@ async function doConvert(data, id) {
     drawCharRemap: drawCharRemap,
     targetNewline: parsed.detectedNewline,
     wantStrip: options.wantStrip,
+    wantEmbed: options.wantEmbed !== false,
     activeRandMap: randFontNames,
     randFontNames: rewriteRandFontNames,
     retainRawFonts,
