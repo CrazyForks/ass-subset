@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8-beta3.1">
+  <meta name="version" content="2.8-beta3.2">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -488,6 +488,13 @@
       border-style: solid; border-color: var(--accent); color: var(--accent);
       background: color-mix(in srgb, var(--accent) 6%, transparent);
     }
+    #opt-group-mode-wrap {
+      width: auto; padding: 0.4rem 0.75rem; margin: 0;
+      font-size: 0.8rem;
+    }
+    #opt-group-mode-wrap.selected { border-color: var(--ink); background: var(--card); }
+    #opt-group-mode { cursor: pointer; }
+    #opt-group-mode-lbl { cursor: pointer; user-select: none; }
     .grp-list { display: flex; flex-direction: column; gap: 0.875rem; }
     .grp-card {
       border: 1px solid var(--rule); border-radius: var(--r); padding: 1rem;
@@ -505,49 +512,47 @@
     .grp-btn-x {
       width: 22px; height: 22px; border: none; background: none;
       color: var(--ink2); font-size: 1rem; cursor: pointer; padding: 0;
-      opacity: 0; transition: opacity 0.15s, color 0.15s; flex-shrink: 0;
+      transition: color 0.15s; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center; border-radius: 3px;
       -webkit-tap-highlight-color: transparent;
     }
-    .grp-card:hover .grp-btn-x { opacity: 1; }
-    .grp-btn-x:hover { opacity: 1; color: var(--err); }
+    .grp-btn-x:hover { color: var(--err); }
     .grp-dz-wrap {
       display: flex; align-items: center; justify-content: center; gap: 0.4rem;
       width: 100%; border: 1.5px dashed var(--rule); border-radius: var(--r);
-      padding: 1.5rem 1rem; font-size: 0.85rem; color: var(--ink2);
-      font-family: var(--mono); cursor: pointer; text-align: center;
+      padding: 1.5rem 1rem; color: var(--ink2);
+      font-family: var(--sans); cursor: pointer; text-align: center;
       transition: border-color 0.12s, color 0.12s, background 0.12s; background: var(--paper);
-      margin-top: 0.5rem; flex-direction: column;
+      margin-top: 0.5rem; flex-direction: column; min-height: 5rem;
     }
     .grp-dz-wrap:hover { border-color: var(--accent); color: var(--ink); background: var(--card); }
     .grp-dz-wrap.drag-over { border-color: var(--accent); color: var(--ink); background: var(--card); }
-    .grp-dz-hint { font-size: 0.7rem; color: var(--ink2); margin-top: 0.2rem; }
+    .grp-dz-wrap .dz-main { font-weight: 500; font-size: 13px; margin-bottom: 0.2rem; font-family: var(--sans); color: var(--ink); }
+    .grp-dz-wrap .dz-hint { font-size: 0.72rem; color: var(--ink2); font-family: var(--mono); margin-top: 0.2rem; }
     .grp-file-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.75rem; }
     .grp-file-row {
       display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem;
       border: 1px solid var(--rule2); border-radius: var(--r);
       font-size: 0.78rem; background: var(--card); cursor: pointer;
-      transition: border-color 0.12s, background 0.12s;
     }
-    .grp-file-row.grp-embed-target {
-      border-color: var(--ok); border-width: 1.5px;
-      background: color-mix(in srgb, var(--ok) 6%, var(--card));
-    }
+    .grp-file-row.grp-embed-target { box-shadow: 0 0 0 1px var(--ok); background: var(--card); }
     .grp-file-row:hover { border-color: var(--rule); }
-    .grp-file-row.grp-embed-target:hover { border-color: var(--ok); }
+    .grp-file-row.grp-embed-target:hover { border-color: var(--rule2); }
     .grp-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
     .grp-file-tag {
-      font-size: 0.65rem; font-family: var(--mono); color: var(--ok); flex-shrink: 0;
-      border: 1px solid color-mix(in srgb, var(--ok) 60%, transparent);
-      border-radius: var(--r); padding: 0.15rem 0.5rem;
-      background: color-mix(in srgb, var(--ok) 12%, transparent);
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 500;
+      padding: 0.15rem 0.5rem; border-radius: 3px;
+      color: var(--ok); border: none; background: rgba(30, 122, 70, 0.12);
+      flex-shrink: 0;
     }
     .grp-file-rm {
       color: var(--ink2); cursor: pointer; font-size: 11px; background: none; border: none;
-      flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; padding: 0 2px;
+      flex-shrink: 0; transition: color 0.12s; padding: 0 2px;
     }
-    .grp-file-row:hover .grp-file-rm { opacity: 1; }
     .grp-file-rm:hover { color: var(--accent); }
+    .grp-file-size {
+      color: var(--ink2); font-family: var(--mono); font-size: 0.72rem; flex-shrink: 0;
+    }
     .btn-add-grp {
       width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
       padding: 0.45rem 1rem; border: 1px dashed var(--rule2); border-radius: var(--r);
@@ -555,13 +560,6 @@
       cursor: pointer; transition: border-color 0.12s, color 0.12s; margin-top: 0.375rem;
     }
     .btn-add-grp:hover { border-color: var(--ink2); color: var(--ink); }
-    }
-    .grp-file-rm {
-      color: var(--ink2); cursor: pointer; font-size: 11px; background: none; border: none;
-      flex-shrink: 0; opacity: 0; transition: opacity 0.12s, color 0.12s; padding: 0 2px;
-    }
-    .grp-file-row:hover .grp-file-rm { opacity: 1; }
-    .grp-file-rm:hover { color: var(--accent); }
 
     .opt-row {
       display: flex;
@@ -1660,23 +1658,25 @@
         <span class="step-subtitle">.ass / .ssa</span>
       </div>
       <div class="step-body">
-        <button class="btn-group-toggle" id="btn-group-toggle" type="button">
-          <span id="btn-group-toggle-dot" style="width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;"></span>
-          <span id="btn-group-toggle-lbl" data-i18n="step1.group_toggle">Enable Group Mode</span>
-        </button>
-        <label class="drop-zone" id="dz-ass" for="inp-ass" data-i18n-aria="aria.dz_ass" aria-label="Upload subtitle — drag and drop or click to browse">
-          <div class="dz-main" data-i18n="step1.drop">Drop your subtitle here, or click to browse</div>
-          <div class="dz-hint" data-i18n="step1.hint">.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion</div>
+        <label class="btn btn-outline" id="opt-group-mode-wrap" style="width:fit-content;padding:0.4rem 0.75rem;margin-bottom:0.5rem;font-size:0.8rem;align-self:flex-start;">
+          <input type="checkbox" id="opt-group-mode" style="cursor:pointer;">
+          <span id="opt-group-mode-lbl" data-i18n="step1.group_toggle">Enable Group Mode</span>
         </label>
-        <input type="file" id="inp-ass" accept=".ass,.ssa,.zip" multiple class="file-input-hidden"
-          data-i18n-aria="aria.dz_ass" aria-label="Upload subtitle — drag and drop or click to browse">
-        <div id="ass-badge" class="hidden mt2"></div>
-        <div id="grp-list-wrap" class="hidden">
-          <div class="grp-list" id="grp-list"></div>
-          <button class="btn-add-grp" id="btn-add-grp" type="button">
-            <span style="font-size:15px;line-height:1;">+</span>
-            <span data-i18n="step1.add_group">Add Group</span>
-          </button>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <label class="drop-zone" id="dz-ass" for="inp-ass" data-i18n-aria="aria.dz_ass" aria-label="Upload subtitle — drag and drop or click to browse" style="flex:1;min-height:8rem;display:flex;flex-direction:column;justify-content:center;">
+            <div class="dz-main" data-i18n="step1.drop">Drop your subtitle here, or click to browse</div>
+            <div class="dz-hint" data-i18n="step1.hint">.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion</div>
+          </label>
+          <input type="file" id="inp-ass" accept=".ass,.ssa,.zip" multiple class="file-input-hidden"
+            data-i18n-aria="aria.dz_ass" aria-label="Upload subtitle — drag and drop or click to browse">
+          <div id="ass-badge" class="hidden mt2"></div>
+          <div id="grp-list-wrap" class="hidden">
+            <div class="grp-list" id="grp-list"></div>
+            <button class="btn-add-grp" id="btn-add-grp" type="button">
+              <span style="font-size:15px;line-height:1;">+</span>
+              <span data-i18n="step1.add_group">Add Group</span>
+            </button>
+          </div>
         </div>
         <div class="upload-error hidden"></div>
       </div>
@@ -2068,6 +2068,8 @@
         'step.done': '（已完成）',
         'step1.drop': '拖拽字幕文件到此，或点击选择',
         'step1.hint': '支持 .ass、.ssa、zip 压缩包及文件夹拖拽上传 — 多选批量转换',
+        'step1.group_toggle': '启用分组',
+        'step1.add_group': '添加分组',
         'step1.title': '上传字幕文件',
         'step2.title': '分析结果',
         'step3.title': '选择操作',
@@ -2255,6 +2257,8 @@
         'step.done': '（已完成）',
         'step1.drop': '拖曳字幕檔到此，或點擊選擇',
         'step1.hint': '支援 .ass、.ssa、zip 壓縮包及資料夾拖曳上傳 — 多選批量轉換',
+        'step1.group_toggle': '啟用分組',
+        'step1.add_group': '新增分組',
         'step1.title': '上傳字幕檔',
         'step2.title': '分析結果',
         'step3.title': '選擇操作',
@@ -2442,6 +2446,8 @@
         'step.done': '(done)',
         'step1.drop': 'Drop your subtitle here, or click to browse',
         'step1.hint': '.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion',
+        'step1.group_toggle': 'Enable Group Mode',
+        'step1.add_group': 'Add Group',
         'step1.title': 'Upload Subtitle',
         'step2.title': 'Analysis',
         'step3.title': 'Options',
@@ -2629,6 +2635,8 @@
         'step.done': '（完了）',
         'step1.drop': 'スクリプトをここにドロップ、またはクリックして選択',
         'step1.hint': '.ass、.ssa、.zip、フォルダのドラッグアンドドロップに対応 — 複数選択でバッチ変換',
+        'step1.group_toggle': 'グループモードを有効にする',
+        'step1.add_group': 'グループを追加',
         'step1.title': 'スクリプトをアップロード',
         'step2.title': '解析結果',
         'step3.title': 'オプション',
@@ -2816,6 +2824,8 @@
         'step.done': '(완료)',
         'step1.drop': '스크립트를 여기에 드래그하거나 클릭하여 선택',
         'step1.hint': '.ass, .ssa, .zip 및 폴더 드래그 앤 드롭 지원 — 다중 선택으로 일괄 변환',
+        'step1.group_toggle': '그룹 모드 활성화',
+        'step1.add_group': '그룹 추가',
         'step1.title': '자막 스크립트 업로드',
         'step2.title': '분석 결과',
         'step3.title': '옵션',
@@ -3003,6 +3013,8 @@
         'step.done': '(completado)',
         'step1.drop': 'Suelta tu subtítulo aquí, o haz clic para seleccionar',
         'step1.hint': 'Archivos .ass, .ssa, .zip y carpetas (arrastra y suelta) — selección múltiple para procesamiento por lotes',
+        'step1.group_toggle': 'Habilitar modo de grupo',
+        'step1.add_group': 'Agregar grupo',
         'step1.title': 'Subir subtítulo',
         'step2.title': 'Análisis',
         'step3.title': 'Opciones',
@@ -3190,6 +3202,8 @@
         'step.done': '(завершено)',
         'step1.drop': 'Перетащите скрипт сюда или нажмите для выбора',
         'step1.hint': 'Файлы .ass, .ssa, .zip и перетаскивание папок — мультивыбор для пакетной обработки',
+        'step1.group_toggle': 'Включить режим группы',
+        'step1.add_group': 'Добавить группу',
         'step1.title': 'Загрузить скрипт',
         'step2.title': 'Результаты анализа',
         'step3.title': 'Параметры',
@@ -3377,6 +3391,8 @@
         'step.done': '(concluído)',
         'step1.drop': 'Arraste sua legenda aqui ou clique para selecionar',
         'step1.hint': 'Arquivos .ass, .ssa, .zip e arrastar pastas — seleção múltipla para lote',
+        'step1.group_toggle': 'Ativar modo de grupo',
+        'step1.add_group': 'Adicionar grupo',
         'step1.title': 'Enviar legenda',
         'step2.title': 'Análise',
         'step3.title': 'Opções',
@@ -3564,6 +3580,8 @@
         'step.done': '(مكتمل)',
         'step1.drop': 'اسحب نصك هنا أو انقر للاختيار',
         'step1.hint': 'ملفات .ass و.ssa و.zip وسحب المجلدات — متعدد الاختيار للمعالجة الجماعية',
+        'step1.group_toggle': 'تفعيل وضع المجموعة',
+        'step1.add_group': 'إضافة مجموعة',
         'step1.title': 'رفع النص',
         'step2.title': 'نتائج التحليل',
         'step3.title': 'الخيارات',
@@ -3751,6 +3769,8 @@
         'step.done': '(tamamlandı)',
         'step1.drop': 'Altyazıyı buraya sürükle veya tıkla',
         'step1.hint': '.ass, .ssa, .zip dosyaları ve klasör sürükle-bırak desteklenir — toplu dönüşüm için çoklu seçim',
+        'step1.group_toggle': 'Grup Modunu Etkinleştir',
+        'step1.add_group': 'Grup Ekle',
         'step1.title': 'Altyazı yükle',
         'step2.title': 'Analiz',
         'step3.title': 'Seçenekler',
@@ -4030,12 +4050,34 @@
         if (dzAss) dzAss.style.display = 'none';
       } else if (_assBadgeState.type === 'success') {
         badge.classList.remove('hidden');
-        badge.innerHTML = _assBadgeState.entries.map(e =>
-          '<div class="file-badge"><span class="fb-name">' + e.name + '</span>' +
-          '<span class="fb-size">' + e.sizeKB + ' KB</span>' +
-          '<span class="fb-change" onclick="resetUpload()">' + t('change') + '</span></div>'
-        ).join('');
-        if (dzAss) dzAss.style.display = 'none';
+        badge.innerHTML = '';
+        _assBadgeState.entries.forEach((e, i) => {
+          const row = document.createElement('div');
+          row.className = 'file-badge';
+          row.innerHTML =
+            '<span class="fb-name">' + e.name + '</span>' +
+            '<span class="fb-size">' + e.sizeKB + ' KB</span>';
+          const rm = document.createElement('button');
+          rm.className = 'grp-file-rm';
+          rm.type = 'button';
+          rm.textContent = '✕';
+          rm.title = t('change') || 'Remove';
+          rm.addEventListener('click', () => {
+            S.assFiles.splice(i, 1);
+            if (!S.assFiles.length) {
+              resetUpload();
+            } else {
+              _assBadgeState = {
+                type: 'success',
+                entries: S.assFiles.map(f => ({ name: f.file.name, sizeKB: (f.file.size / 1024).toFixed(0) }))
+              };
+              renderAssBadge();
+            }
+          });
+          row.appendChild(rm);
+          badge.appendChild(row);
+        });
+        if (dzAss) { dzAss.style.display = ''; dzAss.style.marginTop = '0.5rem'; }
       }
     }
 
@@ -4391,7 +4433,6 @@
       S.fontBuffers = [];
       S.pendingReplaceKeys.clear();
 
-      dzAss.style.display = 'none';
       _assBadgeState = {
         type: 'success',
         entries: validEntries.map(e => ({ name: e.file.name, sizeKB: (e.file.size / 1024).toFixed(0) }))
@@ -4447,9 +4488,21 @@
     }
 
     function resetUpload() {
-      document.getElementById('dz-ass').style.display = '';
+      const dzAss = document.getElementById('dz-ass');
+      if (dzAss) { dzAss.style.display = ''; dzAss.style.marginTop = ''; }
       document.getElementById('ass-badge').classList.add('hidden');
       document.getElementById('ass-badge').innerHTML = '';
+      const cbGrp = document.getElementById('opt-group-mode');
+      const wrapGrp = document.getElementById('opt-group-mode-wrap');
+      if (cbGrp && cbGrp.checked) {
+        cbGrp.checked = false;
+        if (wrapGrp) wrapGrp.classList.remove('selected');
+        S.groupMode = false;
+        S.groups = [];
+        S._grpNextId = 1;
+        const grpWrap = document.getElementById('grp-list-wrap');
+        if (grpWrap) grpWrap.classList.add('hidden');
+      }
       document.getElementById('step1').classList.add('active');
       document.getElementById('step1').classList.remove('done');
       document.getElementById('step2').style.display = 'none';
@@ -6133,6 +6186,8 @@
       updateStepStatus();
       renderFontPaths();
 
+      document.getElementById('opt-group-mode').checked = false;
+
       initWorker();
 
       if ('queryLocalFonts' in window) {
@@ -6141,18 +6196,24 @@
 
       const dzASS = document.getElementById('dz-ass');
       const inpASS = document.getElementById('inp-ass');
-      inpASS.addEventListener('change', () => inpASS.files.length && handleASSFiles(inpASS.files));
       dzASS.addEventListener('dragover', e => { e.preventDefault(); dzASS.classList.add('drag-over'); });
       dzASS.addEventListener('dragleave', () => dzASS.classList.remove('drag-over'));
       dzASS.addEventListener('drop', async e => {
         e.preventDefault();
         dzASS.classList.remove('drag-over');
         try {
+          let files = [];
           if (e.dataTransfer.items) {
-            const files = await getFilesFromDataTransfer(e.dataTransfer.items, 10, ['.ass', '.ssa', '.zip', '.rar', '.7z', '.gz', '.bz2', '.xz', '.tar']);
-            if (files.length) handleASSFiles(files);
+            files = await getFilesFromDataTransfer(e.dataTransfer.items, 10, ['.ass', '.ssa', '.zip', '.rar', '.7z', '.gz', '.bz2', '.xz', '.tar']);
           } else if (e.dataTransfer.files.length) {
-            handleASSFiles(e.dataTransfer.files);
+            files = Array.from(e.dataTransfer.files);
+          }
+          if (!files.length) return;
+          if (S.groupMode) {
+            if (!S.groups.length) S.groups.push(grpNewGroup());
+            grpHandleFiles(S.groups[0], files);
+          } else {
+            handleASSFiles(files);
           }
         } catch (err) {
           if (err.message === 'err.folder_depth') {
@@ -6169,7 +6230,13 @@
         if (group.userSetEmbedTarget && group.embedTargetIndex >= 0 && group.embedTargetIndex < group.files.length)
           return group.embedTargetIndex;
         if (!group.files.length) return -1;
-        return 0;
+        let minIdx = 0;
+        let minName = group.files[0].file.name.toLowerCase();
+        for (let i = 1; i < group.files.length; i++) {
+          const n = group.files[i].file.name.toLowerCase();
+          if (n.localeCompare(minName, undefined, { numeric: true }) < 0) { minName = n; minIdx = i; }
+        }
+        return minIdx;
       }
 
       function grpSortFiles(group) {
@@ -6192,7 +6259,6 @@
         if (!S.groupMode) { wrap.classList.add('hidden'); return; }
         wrap.classList.remove('hidden');
         list.innerHTML = '';
-        const embedMode = grpIsEmbedMode();
         S.groups.forEach((g, gi) => {
           const card = document.createElement('div');
           card.className = 'grp-card' + (g.files.length ? ' grp-has-files' : '');
@@ -6202,31 +6268,30 @@
           lbl.className = 'grp-label';
           lbl.textContent = `Group ${gi + 1}`;
           hdr.appendChild(lbl);
-          if (S.groups.length > 1) {
-            const x = document.createElement('button');
-            x.className = 'grp-btn-x';
-            x.type = 'button';
-            x.textContent = '✕';
-            x.addEventListener('click', () => { S.groups.splice(gi, 1); grpRender(); });
-            hdr.appendChild(x);
-          }
+          const x = document.createElement('button');
+          x.className = 'grp-btn-x';
+          x.type = 'button';
+          x.textContent = '✕';
+          x.style.visibility = S.groups.length <= 1 ? 'hidden' : 'visible';
+          x.style.cursor = S.groups.length <= 1 ? 'not-allowed' : 'pointer';
+          x.disabled = S.groups.length <= 1;
+          x.addEventListener('click', () => { if (S.groups.length > 1) { S.groups.splice(gi, 1); grpRender(); } });
+          hdr.appendChild(x);
           card.appendChild(hdr);
           const sorted = grpSortFiles(g);
           const targetIdx = grpGetEmbedTargetIndex(g);
           const fileList = document.createElement('div');
           fileList.className = 'grp-file-list';
           sorted.forEach((f, si) => {
-            const isTarget = embedMode && si === targetIdx;
+          const isTarget = f._origIndex === targetIdx;
             const row = document.createElement('div');
             row.className = 'grp-file-row' + (isTarget ? ' grp-embed-target' : '');
-            if (embedMode) {
-              row.addEventListener('click', e => {
-                if (e.target.classList.contains('grp-file-rm')) return;
-                g.embedTargetIndex = f._origIndex;
-                g.userSetEmbedTarget = true;
-                grpRender();
-              });
-            }
+            row.addEventListener('click', e => {
+              if (e.target.classList.contains('grp-file-rm')) return;
+              g.embedTargetIndex = f._origIndex;
+              g.userSetEmbedTarget = true;
+              grpRender();
+            });
             const name = document.createElement('span');
             name.className = 'grp-file-name';
             name.textContent = f.file.name;
@@ -6237,6 +6302,10 @@
               tag.textContent = '嵌入目标';
               row.appendChild(tag);
             }
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'grp-file-size';
+            sizeSpan.textContent = (f.file.size / 1024).toFixed(0) + ' KB';
+            row.appendChild(sizeSpan);
             const rm = document.createElement('button');
             rm.className = 'grp-file-rm';
             rm.type = 'button';
@@ -6257,7 +6326,16 @@
           if (g.files.length) card.appendChild(fileList);
           const dz = document.createElement('div');
           dz.className = 'grp-dz-wrap';
-          dz.innerHTML = '<span style="font-size:1.1rem;">+</span><div><span>添加字幕文件</span><span class="grp-dz-hint">.ass .ssa .zip</span></div>';
+          const dzMain = document.createElement('div');
+          dzMain.className = 'dz-main';
+          dzMain.setAttribute('data-i18n', 'step1.drop');
+          dzMain.textContent = t('step1.drop') || 'Drop your subtitle here, or click to browse';
+          const dzHint = document.createElement('div');
+          dzHint.className = 'dz-hint';
+          dzHint.setAttribute('data-i18n', 'step1.hint');
+          dzHint.textContent = t('step1.hint') || '.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion';
+          dz.appendChild(dzMain);
+          dz.appendChild(dzHint);
           dz.addEventListener('click', () => {
             const tmp = document.createElement('input');
             tmp.type = 'file'; tmp.accept = '.ass,.ssa,.zip'; tmp.multiple = true;
@@ -6306,33 +6384,70 @@
         grpRender();
       }
 
-      document.getElementById('btn-group-toggle').addEventListener('click', () => {
-        S.groupMode = !S.groupMode;
-        const btn = document.getElementById('btn-group-toggle');
-        btn.classList.toggle('grp-active', S.groupMode);
-        document.getElementById('btn-group-toggle-lbl').textContent =
-          S.groupMode ? 'Group Mode — Click to Disable' : 'Enable Group Mode';
+      document.getElementById('opt-group-mode').addEventListener('change', (e) => {
+        S.groupMode = e.target.checked;
+        const wrap = document.getElementById('opt-group-mode-wrap');
+        wrap.classList.toggle('selected', S.groupMode);
+        const dzASS = document.getElementById('dz-ass');
+        const assB = document.getElementById('ass-badge');
+        const grpWrap = document.getElementById('grp-list-wrap');
         if (S.groupMode) {
           if (!S.groups.length) S.groups.push(grpNewGroup());
-          if (S.assFiles.length) {
+          if (S.assFiles && S.assFiles.length) {
             S.assFiles.forEach(af => {
-              if (!S.groups[0].files.find(e => e.file.name === af.file.name))
+              if (!S.groups[0].files.find(f => f.file.name === af.file.name))
                 S.groups[0].files.push({ file: af.file, zipPath: af.zipPath, content: af.content, rawBuffer: af.rawBuffer, hasBOM: af.hasBOM });
             });
+            S.assFiles = [];
+            _assBadgeState = null;
           }
-          document.getElementById('dz-ass').style.display = 'none';
-          document.getElementById('ass-badge').classList.add('hidden');
+          if (dzASS) dzASS.style.display = 'none';
+          if (assB) assB.classList.add('hidden');
         } else {
-          document.getElementById('dz-ass').style.display = S.assFiles.length ? 'none' : '';
-          document.getElementById('ass-badge').classList.toggle('hidden', !S.assFiles.length);
-          document.getElementById('grp-list-wrap').classList.add('hidden');
+          if (S.groups && S.groups.length > 0) {
+            const seen = new Set(S.assFiles.map(af => af.file.name));
+            S.groups.forEach(g => {
+              (g.files || []).forEach(f => {
+                if (!seen.has(f.file.name)) {
+                  seen.add(f.file.name);
+                  S.assFiles.push({ file: f.file, zipPath: f.zipPath, content: f.content, rawBuffer: f.rawBuffer, hasBOM: f.hasBOM });
+                }
+              });
+            });
+          }
+          S.groups = [];
+          S._grpNextId = 1;
+          const grpWrap = document.getElementById('grp-list-wrap');
+          if (grpWrap) grpWrap.classList.add('hidden');
+          if (S.assFiles && S.assFiles.length) {
+            _assBadgeState = {
+              type: 'success',
+              entries: S.assFiles.map(e => ({ name: e.file.name, sizeKB: (e.file.size / 1024).toFixed(0) }))
+            };
+            renderAssBadge();
+            if (assB) assB.classList.remove('hidden');
+          } else {
+            if (dzASS) { dzASS.style.display = ''; dzASS.style.marginTop = ''; }
+            if (assB) assB.classList.add('hidden');
+          }
         }
         grpRender();
+        updateStepStatus();
       });
 
       document.getElementById('btn-add-grp').addEventListener('click', () => {
         S.groups.push(grpNewGroup());
         grpRender();
+      });
+
+      document.getElementById('inp-ass').addEventListener('change', e => {
+        if (S.groupMode) {
+          if (!S.groups.length) S.groups.push(grpNewGroup());
+          grpHandleFiles(S.groups[0], e.target.files);
+        } else {
+          handleASSFiles(e.target.files);
+        }
+        e.target.value = '';
       });
 
       const cbDraw = document.getElementById('opt-draw');
