@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8-beta3.2">
+  <meta name="version" content="2.8-beta3.3">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -3917,6 +3917,7 @@
       renderAssBadge();
       renderAssErrors();
       renderFontError();
+      if (S.groupMode && typeof _grpRenderFn === 'function') _grpRenderFn();
       document.getElementById('lang-wrap').classList.remove('open');
       document.getElementById('btn-lang-toggle').setAttribute('aria-expanded', 'false');
     }
@@ -3991,7 +3992,9 @@
       if (_convHeartbeat) { clearInterval(_convHeartbeat); _convHeartbeat = null; }
     }
     const S = {
-      assFiles: [],
+      _assFiles: [],
+      get assFiles() { return this.groupMode ? this.groups.flatMap(g => g.files) : this._assFiles; },
+      set assFiles(val) { if (this.groupMode) { this.groups = [{ id: this._grpNextId++, name: 'Default', files: val }]; } else { this._assFiles = val; } },
       uploadedFonts: new Map(),
       allFontCandidates: [],
       outputBlobs: [],
@@ -4038,6 +4041,7 @@
     }
 
     function renderAssBadge() {
+      if (S.groupMode) return;
       const badge = document.getElementById('ass-badge');
       const dzAss = document.getElementById('dz-ass');
       if (!badge || !_assBadgeState) return;
@@ -4328,7 +4332,7 @@
           const buf = await entry.async('arraybuffer');
           const rawContent = await decodeText(buf);
           const uint8 = new Uint8Array(buf);
-          const hasBOM = (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF);
+          const hasBOM = (uint8.length >= 3 && uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF);
           const strippedContent = rawContent.startsWith('\uFEFF') ? rawContent.slice(1) : rawContent;
           results.push({
             file: { name: entry.name, size: buf.byteLength },
@@ -4347,6 +4351,46 @@
         }
       }
       return results;
+    }
+
+    function enforceMutualExclusion() {
+      const cbDraw = document.getElementById('opt-draw');
+      const cbFont = document.getElementById('opt-font');
+      const optSysFont = document.getElementById('opt-sysfont');
+      const cbStrip = document.getElementById('opt-strip');
+      const btnLocal = document.getElementById('btn-local-font');
+
+      const anyEmbed = cbDraw.checked || cbFont.checked || optSysFont.checked;
+      const isStrip = cbStrip.checked;
+
+      if (isStrip) {
+        cbDraw.disabled = true;
+        cbFont.disabled = true;
+        optSysFont.disabled = true;
+        btnLocal.disabled = true;
+        document.getElementById('opt-row-draw').classList.add('disabled');
+        document.getElementById('opt-row-font').classList.add('disabled');
+        document.getElementById('opt-row-sysfont').classList.add('disabled');
+      } else {
+        cbDraw.disabled = cbDraw.dataset.shouldEnable === 'false';
+        document.getElementById('opt-row-draw').classList.toggle('disabled', cbDraw.disabled);
+
+        cbFont.disabled = cbFont.dataset.shouldEnable === 'false';
+        document.getElementById('opt-row-font').classList.toggle('disabled', cbFont.disabled);
+
+        optSysFont.disabled = optSysFont.dataset.shouldEnable === 'false';
+        document.getElementById('opt-row-sysfont').classList.toggle('disabled', optSysFont.disabled);
+        btnLocal.disabled = optSysFont.disabled && cbFont.disabled;
+
+        const canStrip = cbStrip.dataset.hasStripFonts === 'true';
+        if (canStrip && !anyEmbed) {
+          cbStrip.disabled = false;
+          document.getElementById('opt-row-strip').classList.remove('disabled');
+        } else {
+          cbStrip.disabled = true;
+          document.getElementById('opt-row-strip').classList.add('disabled');
+        }
+      }
     }
 
     async function handleASSFiles(files) {
@@ -4387,7 +4431,7 @@
           try {
             const buf = await f.arrayBuffer();
             const uint8 = new Uint8Array(buf);
-            const hasBOM = (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF);
+            const hasBOM = (uint8.length >= 3 && uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF);
             const text = await decodeText(buf);
             const content = text.startsWith('\uFEFF') ? text.slice(1) : text;
             assEntries.push({ file: f, zipPath: null, content, rawBuffer: buf, hasBOM: hasBOM });
@@ -4490,8 +4534,10 @@
     function resetUpload() {
       const dzAss = document.getElementById('dz-ass');
       if (dzAss) { dzAss.style.display = ''; dzAss.style.marginTop = ''; }
-      document.getElementById('ass-badge').classList.add('hidden');
-      document.getElementById('ass-badge').innerHTML = '';
+      if (!S.groupMode) {
+        document.getElementById('ass-badge').classList.add('hidden');
+        document.getElementById('ass-badge').innerHTML = '';
+      }
       const cbGrp = document.getElementById('opt-group-mode');
       const wrapGrp = document.getElementById('opt-group-mode-wrap');
       if (cbGrp && cbGrp.checked) {
@@ -4555,6 +4601,7 @@
 
     function renderAnalysis(preserveState = false) {
       const area = document.getElementById('analysis-area');
+      const targetFiles = S.assFiles;
       const expandedStates = [];
       if (preserveState) {
         area.querySelectorAll('.info-item.expandable').forEach(el => {
@@ -4577,7 +4624,7 @@
       const sysFontSources = new Map();
       const embeddedDetails = [];
 
-      for (const entry of S.assFiles) {
+      for (const entry of targetFiles) {
         const p = entry.parsed;
         totalDrawings += p.drawings;
         totalUnique += p.uniqueDrawings.length;
@@ -4696,7 +4743,7 @@
         '<div class="stat"><div class="stat-val">' + totalEmbedded.size + '</div><div class="stat-lbl">' + t('stat.embeddedFonts') + '</div></div>' +
         '</div>';
 
-      const isMultiFile = S.assFiles.length > 1;
+      const isMultiFile = targetFiles.length > 1;
 
       const baseName = (n) => {
         const s = n.replace(/\\/g, '/');
@@ -4778,8 +4825,8 @@
         drawBadgeText = t('analysis.draw.status.new_short');
         drawBadgeCls = 'badge-ok';
       } else {
-        const anyDelta = S.assFiles.some(e => e.parsed.drawings > 0 && e.parsed.hasExistingDrawSubset && e.parsed.uniqueDrawings.length < e.parsed.subsetReferencedChars.length);
-        const anySync = S.assFiles.some(e => e.parsed.drawings === 0 && e.parsed.hasExistingDrawSubset && e.parsed.subsetNeedsUpdate && !(e.parsed.orphanGlyphCount > 0));
+        const anyDelta = targetFiles.some(e => e.parsed.drawings > 0 && e.parsed.hasExistingDrawSubset && e.parsed.uniqueDrawings.length < e.parsed.subsetReferencedChars.length);
+        const anySync = targetFiles.some(e => e.parsed.drawings === 0 && e.parsed.hasExistingDrawSubset && e.parsed.subsetNeedsUpdate && !(e.parsed.orphanGlyphCount > 0));
         drawBadgeCls = 'badge-ok';
         if (anyDelta || anySync) drawBadgeText = t('analysis.draw.status.sync_short');
         else drawBadgeText = t('analysis.draw.status.update_short');
@@ -4796,7 +4843,7 @@
         hasFonts ? t('font.chars', { n: totalChars }) : t('analysis.font.none'),
         hasFonts ? (() => {
           const _c2r = new Map();
-          for (const entry of S.assFiles) {
+          for (const entry of targetFiles) {
             if (entry.parsed.randFontMap) {
               for (const [rand, orig] of Object.entries(entry.parsed.randFontMap)) _c2r.set(orig.toLowerCase(), rand);
             }
@@ -4855,7 +4902,7 @@
 
       let hasStripFonts = false;
       let hasRandMapMissing = false;
-      for (const entry of S.assFiles) {
+      for (const entry of targetFiles) {
         if (entry.parsed.randMapMissing) hasRandMapMissing = true;
         if (entry.parsed.embeddedFonts) {
           let strippableCount = 0;
@@ -4944,8 +4991,8 @@
       }
 
       if (hasFonts || hasSysFonts) renderFontList();
-      const anyRandMissing = S.assFiles.some(e => e.parsed.randMapMissing);
-      const anyHasRand = S.assFiles.some(e => e.parsed.hasRandFonts);
+      const anyRandMissing = targetFiles.some(e => e.parsed.randMapMissing);
+      const anyHasRand = targetFiles.some(e => e.parsed.hasRandFonts);
       if (anyHasRand && !anyRandMissing) {
         const cbRN2 = document.getElementById('opt-randname');
         const rowRN2 = document.getElementById('opt-row-randname');
@@ -4956,7 +5003,7 @@
         }
       }
 
-      const hasAnyEmbeddedForStep3 = S.assFiles.some(e => e.parsed.embeddedFonts && Object.keys(e.parsed.embeddedFonts).length > 0);
+      const hasAnyEmbeddedForStep3 = targetFiles.some(e => e.parsed.embeddedFonts && Object.keys(e.parsed.embeddedFonts).length > 0);
       if (shouldDraw || hasFonts || hasSysFonts || hasStripFonts || hasAnyEmbeddedForStep3) {
         document.getElementById('step3').style.display = '';
         document.getElementById('step3').classList.add('active');
@@ -4966,45 +5013,7 @@
       enforceMutualExclusion();
     }
 
-    function enforceMutualExclusion() {
-      const cbDraw = document.getElementById('opt-draw');
-      const cbFont = document.getElementById('opt-font');
-      const optSysFont = document.getElementById('opt-sysfont');
-      const cbStrip = document.getElementById('opt-strip');
-      const btnLocal = document.getElementById('btn-local-font');
 
-      const anyEmbed = cbDraw.checked || cbFont.checked || optSysFont.checked;
-      const isStrip = cbStrip.checked;
-
-      if (isStrip) {
-        cbDraw.disabled = true;
-        cbFont.disabled = true;
-        optSysFont.disabled = true;
-        btnLocal.disabled = true;
-        document.getElementById('opt-row-draw').classList.add('disabled');
-        document.getElementById('opt-row-font').classList.add('disabled');
-        document.getElementById('opt-row-sysfont').classList.add('disabled');
-      } else {
-        cbDraw.disabled = cbDraw.dataset.shouldEnable === 'false';
-        document.getElementById('opt-row-draw').classList.toggle('disabled', cbDraw.disabled);
-
-        cbFont.disabled = cbFont.dataset.shouldEnable === 'false';
-        document.getElementById('opt-row-font').classList.toggle('disabled', cbFont.disabled);
-
-        optSysFont.disabled = optSysFont.dataset.shouldEnable === 'false';
-        document.getElementById('opt-row-sysfont').classList.toggle('disabled', optSysFont.disabled);
-        btnLocal.disabled = optSysFont.disabled && cbFont.disabled;
-
-        const canStrip = cbStrip.dataset.hasStripFonts === 'true';
-        if (canStrip && !anyEmbed) {
-          cbStrip.disabled = false;
-          document.getElementById('opt-row-strip').classList.remove('disabled');
-        } else {
-          cbStrip.disabled = true;
-          document.getElementById('opt-row-strip').classList.add('disabled');
-        }
-      }
-    }
 
     function updateStep4Visibility() {
       const wantDraw = document.getElementById('opt-draw').checked;
@@ -5576,43 +5585,66 @@
       startProgressHeartbeat();
 
       try {
-        for (let i = 0; i < S.assFiles.length; i++) {
-          const entry = S.assFiles[i];
+        const targetList = S.groupMode ? S.groups.filter(g => g.files.length > 0) : S.assFiles.map(f => ({ files: [f], embedTargetIndex: 0 }));
+        batchTotal = targetList.length;
+        for (let i = 0; i < targetList.length; i++) {
+          const group = targetList[i];
           batchFileIdx = i;
-          if (S.assFiles.length > 1) log('--- ' + entry.file.name + ' ---', 'info');
-
-          const p = entry.parsed;
-          if (p.randMapMissing) log(t('log.font.rand_missing'), 'warn');
-          const needDraw = wantDraw && (p.subsetNeedsUpdate || p.drawings > 0 || p.hasExistingDrawSubset);
-          const needFont = (wantFont && p.externalFonts && Object.keys(p.externalFonts).length > 0) || (wantSystemFont && p.systemFontsReferenced && Object.keys(p.systemFontsReferenced).length > 0);
-          const needStrip = wantStrip;
-
+          const isMulti = group.files.length > 1;
+          if (targetList.length > 1 || isMulti) log('--- ' + (S.groupMode ? `Group ${i + 1}` : group.files[0].file.name) + ' ---', 'info');
+          let combinedText = '';
+          let lineCounts = [];
+          if (isMulti) {
+            for (let j = 0; j < group.files.length; j++) {
+              const f = group.files[j];
+              const text = f.content;
+              const em = text.match(/(\[Events\]\s*\r?\nFormat:[^\r\n]*\r?\n)/i);
+              if (em) {
+                if (j === 0) combinedText += text.slice(0, em.index + em[0].length);
+                const eventsStr = text.slice(em.index + em[0].length);
+                combinedText += eventsStr;
+                if (!eventsStr.endsWith('\n')) combinedText += '\n';
+                lineCounts.push(eventsStr.split('\n').length);
+              } else {
+                lineCounts.push(0);
+                if (j === 0) combinedText = text;
+              }
+            }
+          } else {
+            combinedText = group.files[0].content;
+          }
+          let needDraw = false, needFont = false, needStrip = false, needRandRestore = false, needExtract = false;
+          let totalEmbeddedCount = 0;
+          for (const f of group.files) {
+            const p = f.parsed || {};
+            if (p.randMapMissing) log(t('log.font.rand_missing'), 'warn');
+            if (wantDraw && (p.subsetNeedsUpdate || p.drawings > 0 || p.hasExistingDrawSubset)) needDraw = true;
+            if ((wantFont && p.externalFonts && Object.keys(p.externalFonts).length > 0) || (wantSystemFont && p.systemFontsReferenced && Object.keys(p.systemFontsReferenced).length > 0)) needFont = true;
+            if (wantStrip) needStrip = true;
+            if (wantStrip && p.hasRandFonts && !p.randMapMissing) needRandRestore = true;
+            if (wantSeparate && p.embeddedFonts && Object.keys(p.embeddedFonts).length > 0) needExtract = true;
+            if (p.embeddedFonts) totalEmbeddedCount += Object.keys(p.embeddedFonts).length;
+          }
           let result;
-          const needRandRestore = wantStrip && p.hasRandFonts && !p.randMapMissing;
-          const needExtract = wantSeparate && p.embeddedFonts && Object.keys(p.embeddedFonts).length > 0;
           if (!needDraw && !needFont && !needStrip && !needRandRestore && !needExtract) {
             result = {
               isDirect: true,
-              finalBlob: new Blob([entry.rawBuffer]),
-              origSize: entry.rawBuffer.byteLength,
-              newSize: entry.rawBuffer.byteLength,
+              finalText: combinedText,
+              origSize: group.files.reduce((a, b) => a + b.rawBuffer.byteLength, 0),
+              newSize: group.files.reduce((a, b) => a + b.rawBuffer.byteLength, 0),
               fontBuffers: [],
-              stats: { embeddedCount: (p.embeddedFonts ? Object.keys(p.embeddedFonts).length : 0) }
+              stats: { embeddedCount: totalEmbeddedCount }
             };
           } else {
             result = await workerCall('convert', {
-              text: entry.content,
-              forceHasBOM: entry.hasBOM,
+              text: combinedText,
+              forceHasBOM: group.files[0].hasBOM,
               fonts,
-              fileName: entry.file.name,
+              fileName: isMulti ? `Group_${i+1}` : group.files[0].file.name,
               options: { wantDraw, wantFont, wantSystemFont, wantStrip, wantAscii: document.getElementById('opt-ascii').checked, wantFullFont: document.getElementById('opt-fullfont').checked, wantMultiWeight, wantRandFont, wantEmbed: !wantSeparate },
             });
           }
-
-          const blob = result.isDirect ? result.finalBlob : (new Blob([result.finalText], { type: 'text/plain;charset=utf-8' }));
-          S.fileFontBuffers[i] = result.fontBuffers || [];
           if (result.fontBuffers) S.fontBuffers = S.fontBuffers.concat(result.fontBuffers);
-
           if (result.detailedDrawings && result.detailedDrawings.length > 0) {
             const box = document.getElementById('log-box');
             const doneLine = box.lastElementChild;
@@ -5622,14 +5654,12 @@
             const drawLines = result.detailedDrawings.map(d => t('log.draw.item', { char: d.char, count: d.count, start: d.firstStart, end: d.lastStart }));
             logExpandable(t('log.draw.detail.expand', { count: result.detailedDrawings.length }), drawLines, doneLine);
           }
-
           if (wantStrip && result.stats.strippedNames && result.stats.strippedNames.length > 0) {
             const box = document.getElementById('log-box');
             const doneLine = box.lastElementChild;
             const stripLines = result.stats.strippedNames.map(name => t('log.font.strip.item', { name }));
             logExpandable(t('log.font.strip.expand', { count: result.stats.strippedNames.length }), stripLines, doneLine);
           }
-
           if (wantStrip && result.stats.drawRestoreLog) {
             const dr = result.stats.drawRestoreLog;
             const box = document.getElementById('log-box');
@@ -5657,18 +5687,69 @@
               box.insertBefore(msg, doneLine);
             }
           }
-
-          const origKB = (result.origSize / 1024).toFixed(0);
-          const newKB = (result.newSize / 1024).toFixed(0);
-          _convertResultsState.push({
-            entryName: entry.file.name,
-            count: result.stats.embeddedCount,
-            origKB, newKB, fileIdx: i,
-            hasFonts: (result.fontBuffers && result.fontBuffers.length > 0),
-            wantStrip,
-            strippedCount: (result.stats.strippedNames ? result.stats.strippedNames.length : 0),
-          });
-          S.outputBlobs.push({ name: entry.file.name, zipPath: entry.zipPath || null, sourceZipName: entry.sourceZipName || null, blob });
+          if (isMulti) {
+            const em = result.finalText.match(/(\[Events\]\s*\r?\nFormat:[^\r\n]*\r?\n)/i);
+            let outHeader = result.finalText;
+            let outEvents = '';
+            if (em) {
+              outHeader = result.finalText.slice(0, em.index + em[0].length);
+              outEvents = result.finalText.slice(em.index + em[0].length);
+            }
+            const outEventLines = outEvents.split('\n');
+            const fontBlocks = [];
+            const cleanHeaderLines = [];
+            for (const line of outHeader.split('\n')) {
+              if (line.startsWith('fontname:') || line.startsWith('fontdata:')) fontBlocks.push(line);
+              else cleanHeaderLines.push(line);
+            }
+            const fontInjection = fontBlocks.length > 0 ? '\n' + fontBlocks.join('\n') + '\n' : '';
+            const hostIdx = group.embedTargetIndex >= 0 ? group.embedTargetIndex : 0;
+            let currentLineIdx = 0;
+            for (let j = 0; j < group.files.length; j++) {
+              const f = group.files[j];
+              const linesToTake = lineCounts[j];
+              const myEvents = outEventLines.slice(currentLineIdx, currentLineIdx + linesToTake).join('\n');
+              currentLineIdx += linesToTake;
+              const origEm = f.content.match(/(\[Events\]\s*\r?\nFormat:[^\r\n]*\r?\n)/i);
+              let myHeader = origEm ? f.content.slice(0, origEm.index + origEm[0].length) : f.content;
+              if (!wantSeparate && j === hostIdx && fontBlocks.length > 0) {
+                const styleMatch = myHeader.match(/\[V4\+?\s*Styles\]/i);
+                if (styleMatch) myHeader = myHeader.slice(0, styleMatch.index) + fontInjection + myHeader.slice(styleMatch.index);
+                else myHeader += fontInjection;
+              }
+              const myFinalText = myHeader + myEvents;
+              const myBlob = result.isDirect ? new Blob([f.rawBuffer]) : new Blob([myFinalText], { type: 'text/plain;charset=utf-8' });
+              const fileIndex = S.outputBlobs.length;
+              S.fileFontBuffers[fileIndex] = result.fontBuffers || [];
+              const newKB = (myBlob.size / 1024).toFixed(0);
+              const origKB = (f.rawBuffer.byteLength / 1024).toFixed(0);
+              _convertResultsState.push({
+                entryName: f.file.name,
+                count: result.stats.embeddedCount,
+                origKB, newKB, fileIdx: fileIndex,
+                hasFonts: (result.fontBuffers && result.fontBuffers.length > 0),
+                wantStrip,
+                strippedCount: (result.stats.strippedNames ? result.stats.strippedNames.length : 0),
+              });
+              S.outputBlobs.push({ name: f.file.name, zipPath: f.zipPath || null, sourceZipName: f.sourceZipName || null, blob: myBlob });
+            }
+          } else {
+            const f = group.files[0];
+            const blob = result.isDirect ? new Blob([f.rawBuffer]) : new Blob([result.finalText], { type: 'text/plain;charset=utf-8' });
+            const fileIndex = S.outputBlobs.length;
+            S.fileFontBuffers[fileIndex] = result.fontBuffers || [];
+            const origKB = (result.origSize / 1024).toFixed(0);
+            const newKB = (result.newSize / 1024).toFixed(0);
+            _convertResultsState.push({
+              entryName: f.file.name,
+              count: result.stats.embeddedCount,
+              origKB, newKB, fileIdx: fileIndex,
+              hasFonts: (result.fontBuffers && result.fontBuffers.length > 0),
+              wantStrip,
+              strippedCount: (result.stats.strippedNames ? result.stats.strippedNames.length : 0),
+            });
+            S.outputBlobs.push({ name: f.file.name, zipPath: f.zipPath || null, sourceZipName: f.sourceZipName || null, blob });
+          }
         }
 
         renderConvertResults();
@@ -5791,25 +5872,56 @@
       }
       const wantOpt = document.getElementById('opt-append-optimize').checked;
       const outerZip = new JSZip();
-      if (S.outputBlobs.length === 1) {
-        const o = S.outputBlobs[0];
-        const dlName = wantOpt ? o.name.replace(/\.(ass|ssa)$/i, '_optimized.$1') : o.name;
-        outerZip.file(dlName, o.blob);
-        for (const f of buildFontFilesForIndex(0)) outerZip.file(`fonts/${f.name}`, f.buffer);
-      } else {
-        const usedFolders = new Set();
-        for (let i = 0; i < S.outputBlobs.length; i++) {
-          const o = S.outputBlobs[i];
+      const isGroupMode = S.groupMode;
+      const activeGroups = isGroupMode ? S.groups.filter(g => g.files.length > 0) : [];
+      const numGroups = activeGroups.length;
+      const numTotalFiles = S.outputBlobs.length;
+      let blobIdx = 0;
+      const usedFolders = new Set();
+      if (!isGroupMode) {
+        if (numTotalFiles === 1) {
+          const o = S.outputBlobs[0];
           const dlName = wantOpt ? o.name.replace(/\.(ass|ssa)$/i, '_optimized.$1') : o.name;
-          let folder = o.name.replace(/\.[^.]+$/, '');
-          if (usedFolders.has(folder)) {
+          outerZip.file(dlName, o.blob);
+          for (const f of buildFontFilesForIndex(0)) outerZip.file(`fonts/${f.name}`, f.buffer);
+        } else {
+          for (let i = 0; i < numTotalFiles; i++) {
+            const o = S.outputBlobs[i];
+            const dlName = wantOpt ? o.name.replace(/\.(ass|ssa)$/i, '_optimized.$1') : o.name;
+            let folder = o.name.replace(/\.[^.]+$/, '');
             let n = 2;
-            while (usedFolders.has(`${folder}_${n}`)) n++;
-            folder = `${folder}_${n}`;
+            let uniqueFolder = folder;
+            while (usedFolders.has(uniqueFolder)) { uniqueFolder = `${folder}_${n}`; n++; }
+            usedFolders.add(uniqueFolder);
+            outerZip.file(`${uniqueFolder}/${dlName}`, o.blob);
+            for (const f of buildFontFilesForIndex(i)) outerZip.file(`${uniqueFolder}/fonts/${f.name}`, f.buffer);
           }
-          usedFolders.add(folder);
-          outerZip.file(`${folder}/${dlName}`, o.blob);
-          for (const f of buildFontFilesForIndex(i)) outerZip.file(`${folder}/fonts/${f.name}`, f.buffer);
+        }
+      } else {
+        for (let gi = 0; gi < numGroups; gi++) {
+          const group = activeGroups[gi];
+          const groupName = `group${gi + 1}`;
+          const numFilesInGroup = group.files.length;
+          if (numFilesInGroup === 1) {
+            const o = S.outputBlobs[blobIdx];
+            const dlName = wantOpt ? o.name.replace(/\.(ass|ssa)$/i, '_optimized.$1') : o.name;
+            outerZip.file(`${groupName}/${dlName}`, o.blob);
+            for (const f of buildFontFilesForIndex(blobIdx)) outerZip.file(`${groupName}/fonts/${f.name}`, f.buffer);
+            blobIdx++;
+          } else {
+            for (let fi = 0; fi < numFilesInGroup; fi++) {
+              const o = S.outputBlobs[blobIdx];
+              const dlName = wantOpt ? o.name.replace(/\.(ass|ssa)$/i, '_optimized.$1') : o.name;
+              let folder = o.name.replace(/\.[^.]+$/, '');
+              let n = 2;
+              let uniquePath = `${groupName}/${folder}`;
+              while (usedFolders.has(uniquePath)) { uniquePath = `${groupName}/${folder}_${n}`; n++; }
+              usedFolders.add(uniquePath);
+              outerZip.file(`${uniquePath}/${dlName}`, o.blob);
+              for (const f of buildFontFilesForIndex(blobIdx)) outerZip.file(`${uniquePath}/fonts/${f.name}`, f.buffer);
+              blobIdx++;
+            }
+          }
         }
       }
       const content = await outerZip.generateAsync({ type: 'blob' });
@@ -6181,6 +6293,7 @@
       return files;
     }
 
+    let _grpRenderFn = null;
     document.addEventListener('DOMContentLoaded', () => {
       applyI18n();
       updateStepStatus();
@@ -6282,8 +6395,8 @@
           const targetIdx = grpGetEmbedTargetIndex(g);
           const fileList = document.createElement('div');
           fileList.className = 'grp-file-list';
-          sorted.forEach((f, si) => {
-          const isTarget = f._origIndex === targetIdx;
+          sorted.forEach((f) => {
+            const isTarget = f._origIndex === targetIdx;
             const row = document.createElement('div');
             row.className = 'grp-file-row' + (isTarget ? ' grp-embed-target' : '');
             row.addEventListener('click', e => {
@@ -6299,7 +6412,7 @@
             if (isTarget) {
               const tag = document.createElement('span');
               tag.className = 'grp-file-tag';
-              tag.textContent = '嵌入目标';
+              tag.textContent = t('grp.embed_target') || '嵌入目标';
               row.appendChild(tag);
             }
             const sizeSpan = document.createElement('span');
@@ -6328,12 +6441,10 @@
           dz.className = 'grp-dz-wrap';
           const dzMain = document.createElement('div');
           dzMain.className = 'dz-main';
-          dzMain.setAttribute('data-i18n', 'step1.drop');
-          dzMain.textContent = t('step1.drop') || 'Drop your subtitle here, or click to browse';
+          dzMain.textContent = t('step1.drop');
           const dzHint = document.createElement('div');
           dzHint.className = 'dz-hint';
-          dzHint.setAttribute('data-i18n', 'step1.hint');
-          dzHint.textContent = t('step1.hint') || '.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion';
+          dzHint.textContent = t('step1.hint');
           dz.appendChild(dzMain);
           dz.appendChild(dzHint);
           dz.addEventListener('click', () => {
@@ -6354,27 +6465,93 @@
             } catch (_) {}
           });
           card.appendChild(dz);
+          if (g.errors && g.errors.length > 0) {
+            const errBox = document.createElement('div');
+            errBox.className = 'upload-error';
+            errBox.style.marginTop = '0.5rem';
+            errBox.textContent = g.errors.map(e => {
+              const msg = e.message || t(e.key, e.params || {});
+              if (e.name) {
+                const shortName = truncateName(e.name, 50);
+                return `⚠ ${shortName}: ${msg}`;
+              }
+              return `⚠ ${msg}`;
+            }).join('\n');
+            card.appendChild(errBox);
+          }
           list.appendChild(card);
         });
       }
+      _grpRenderFn = grpRender;
 
       async function grpHandleFiles(group, fileList) {
-        const entries = [];
+        const FILE_SIZE_LIMIT = 2 * 1024 * 1024 * 1024;
+        group.errors = [];
+        const assEntries = [];
         for (const f of Array.from(fileList)) {
+          if (f.size > FILE_SIZE_LIMIT) {
+            group.errors.push({ name: f.name, key: 'err.file_too_large' });
+            continue;
+          }
           if (f.name.toLowerCase().endsWith('.zip')) {
-            try { entries.push(...await processZipFile(f, 'ass')); } catch (_) {}
+            try { 
+              const extracted = await processZipFile(f, 'ass'); 
+              extracted.forEach(e => { e._sourceZipName = f.name; });
+              assEntries.push(...extracted);
+            } catch (e) {
+              const key = e.message;
+              group.errors.push({
+                name: f.name,
+                key: key === 'err.zip_depth' ? 'err.zip_depth' : 'err.zip_corrupt',
+                params: key === 'err.zip_depth' ? { limit: ZIP_MAX_DEPTH } : null
+              });
+            }
           } else if (/\.(ass|ssa)$/i.test(f.name)) {
+            if (f.size > 512 * 1024 * 1024) {
+              group.errors.push({ name: f.name, key: 'err.ass_too_large' });
+              continue;
+            }
             try {
               const buf = await f.arrayBuffer();
               const text = await decodeText(buf);
               const content = text.startsWith('\uFEFF') ? text.slice(1) : text;
-              if (/^\[Script Info\]/im.test(content) && /^\[Events\]/im.test(content))
-                entries.push({ file: f, zipPath: null, content, rawBuffer: buf, hasBOM: text.startsWith('\uFEFF') });
-            } catch (_) {}
+              assEntries.push({ file: f, zipPath: null, content, rawBuffer: buf, hasBOM: text.startsWith('\uFEFF') });
+            } catch (_) {
+              group.errors.push({ name: f.name, key: 'err.invalid' });
+            }
+          } else if (/\.(rar|7z|gz|bz2|xz|tar|lzma|lz|cab|iso|arj|ace)$/i.test(f.name)) {
+            group.errors.push({ name: f.name, key: 'err.unsupported_archive' });
+          } else {
+            group.errors.push({ name: f.name, key: 'err.format' });
           }
         }
+        
+        const validEntries = [];
+        for (const entry of assEntries) {
+          const content = entry.content;
+          if (!/^\[Script Info\]/im.test(content) || !/^\[Events\]/im.test(content)) {
+            group.errors.push({ name: entry.file.name, key: 'err.invalid' });
+            continue;
+          }
+          if (!/^Format\s*:/im.test(content) || !/^Dialogue\s*:/im.test(content)) {
+            group.errors.push({ name: entry.file.name, key: 'err.no_events' });
+            continue;
+          }
+          validEntries.push(entry);
+        }
+
         const existing = new Set(group.files.map(e => e.file.name));
-        entries.filter(e => !existing.has(e.file.name)).forEach(e => group.files.push(e));
+        const newEntries = validEntries.filter(e => !existing.has(e.file.name));
+        
+        for (const e of newEntries) {
+          try {
+            e.parsed = await workerCall('parseASS', { text: e.content });
+            group.files.push(e);
+          } catch (err) {
+            group.errors.push({ name: e.file.name, message: err.message });
+          }
+        }
+
         if (!group.userSetEmbedTarget) {
           group.embedTargetIndex = -1;
         } else if (group.embedTargetIndex >= group.files.length) {
@@ -6382,6 +6559,21 @@
           group.embedTargetIndex = -1;
         }
         grpRender();
+
+        const totalFiles = S.groups.reduce((sum, g) => sum + g.files.length, 0);
+        if (totalFiles > 0) {
+          document.getElementById('step1').classList.remove('active');
+          document.getElementById('step1').classList.add('done');
+          document.getElementById('step2').style.display = '';
+          document.getElementById('step2').classList.add('active');
+          document.getElementById('step3').style.display = 'none';
+          document.getElementById('step3').classList.remove('active');
+          document.getElementById('step4').style.display = 'none';
+          renderAnalysis(true);
+        } else {
+          document.getElementById('step2').style.display = 'none';
+        }
+        updateStepStatus();
       }
 
       document.getElementById('opt-group-mode').addEventListener('change', (e) => {
