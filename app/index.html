@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8-beta3.4">
+  <meta name="version" content="2.8-beta3.5">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -2070,7 +2070,6 @@
         'step1.hint': '支持 .ass、.ssa、zip 压缩包及文件夹拖拽上传 — 多选批量转换',
         'step1.group_toggle': '启用分组',
         'step1.add_group': '添加分组',
-        'grp.embed_target': '嵌入目标',
         'step1.title': '上传字幕文件',
         'step2.title': '分析结果',
         'step3.title': '选择操作',
@@ -2260,7 +2259,6 @@
         'step1.hint': '支援 .ass、.ssa、zip 壓縮包及資料夾拖曳上傳 — 多選批量轉換',
         'step1.group_toggle': '啟用分組',
         'step1.add_group': '新增分組',
-        'grp.embed_target': '嵌入目標',
         'step1.title': '上傳字幕檔',
         'step2.title': '分析結果',
         'step3.title': '選擇操作',
@@ -2450,7 +2448,6 @@
         'step1.hint': '.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion',
         'step1.group_toggle': 'Enable Group Mode',
         'step1.add_group': 'Add Group',
-        'grp.embed_target': 'Host File',
         'step1.title': 'Upload Subtitle',
         'step2.title': 'Analysis',
         'step3.title': 'Options',
@@ -2640,7 +2637,6 @@
         'step1.hint': '.ass、.ssa、.zip、フォルダのドラッグアンドドロップに対応 — 複数選択でバッチ変換',
         'step1.group_toggle': 'グループモードを有効にする',
         'step1.add_group': 'グループを追加',
-        'grp.embed_target': '埋め込み先',
         'step1.title': 'スクリプトをアップロード',
         'step2.title': '解析結果',
         'step3.title': 'オプション',
@@ -2830,7 +2826,6 @@
         'step1.hint': '.ass, .ssa, .zip 및 폴더 드래그 앤 드롭 지원 — 다중 선택으로 일괄 변환',
         'step1.group_toggle': '그룹 모드 활성화',
         'step1.add_group': '그룹 추가',
-        'grp.embed_target': '호스트 파일',
         'step1.title': '자막 스크립트 업로드',
         'step2.title': '분석 결과',
         'step3.title': '옵션',
@@ -3020,7 +3015,6 @@
         'step1.hint': 'Archivos .ass, .ssa, .zip y carpetas (arrastra y suelta) — selección múltiple para procesamiento por lotes',
         'step1.group_toggle': 'Habilitar modo de grupo',
         'step1.add_group': 'Agregar grupo',
-        'grp.embed_target': 'Archivo anfitrión',
         'step1.title': 'Subir subtítulo',
         'step2.title': 'Análisis',
         'step3.title': 'Opciones',
@@ -3210,7 +3204,6 @@
         'step1.hint': 'Файлы .ass, .ssa, .zip и перетаскивание папок — мультивыбор для пакетной обработки',
         'step1.group_toggle': 'Включить режим группы',
         'step1.add_group': 'Добавить группу',
-        'grp.embed_target': 'Основной файл',
         'step1.title': 'Загрузить скрипт',
         'step2.title': 'Результаты анализа',
         'step3.title': 'Параметры',
@@ -3400,7 +3393,6 @@
         'step1.hint': 'Arquivos .ass, .ssa, .zip e arrastar pastas — seleção múltipla para lote',
         'step1.group_toggle': 'Ativar modo de grupo',
         'step1.add_group': 'Adicionar grupo',
-        'grp.embed_target': 'Arquivo principal',
         'step1.title': 'Enviar legenda',
         'step2.title': 'Análise',
         'step3.title': 'Opções',
@@ -3590,7 +3582,6 @@
         'step1.hint': 'ملفات .ass و.ssa و.zip وسحب المجلدات — متعدد الاختيار للمعالجة الجماعية',
         'step1.group_toggle': 'تفعيل وضع المجموعة',
         'step1.add_group': 'إضافة مجموعة',
-        'grp.embed_target': 'الملف المضيف',
         'step1.title': 'رفع النص',
         'step2.title': 'نتائج التحليل',
         'step3.title': 'الخيارات',
@@ -3780,7 +3771,6 @@
         'step1.hint': '.ass, .ssa, .zip dosyaları ve klasör sürükle-bırak desteklenir — toplu dönüşüm için çoklu seçim',
         'step1.group_toggle': 'Grup Modunu Etkinleştir',
         'step1.add_group': 'Grup Ekle',
-        'grp.embed_target': 'Asal Dosya',
         'step1.title': 'Altyazı yükle',
         'step2.title': 'Analiz',
         'step3.title': 'Seçenekler',
@@ -5701,33 +5691,36 @@
             }
           }
           if (isMulti) {
+            const detNl = result.finalText.includes('\r\n') ? '\r\n' : '\n';
             const outEvtMatch = result.finalText.match(/\[Events\][ \t]*\r?\n(?:Format:[^\r\n]*\r?\n)?/i);
             const outEvtBodyStart = outEvtMatch ? outEvtMatch.index + outEvtMatch[0].length : result.finalText.length;
             const allOutDlgLines = result.finalText.slice(outEvtBodyStart).split(/\r?\n/).filter(l => /^(Dialogue|Comment)\s*:/i.test(l));
-            const rawHdr = outEvtMatch ? result.finalText.slice(0, outEvtBodyStart) : result.finalText;
-            const fontsSecMatch = rawHdr.match(/\n\[Fonts\][\s\S]*?(?=\n\[(?!Fonts])|$)/i);
-            const headerNoFonts = fontsSecMatch ? rawHdr.slice(0, fontsSecMatch.index) + rawHdr.slice(fontsSecMatch.index + fontsSecMatch[0].length) : rawHdr;
-            const fontsSection = fontsSecMatch ? fontsSecMatch[0].trimEnd() : '';
+            const rawHdr = outEvtMatch ? result.finalText.slice(0, outEvtMatch.index) : result.finalText;
+            const fontSecStart = rawHdr.search(/\n\[Fonts\]/i);
+            const headerPreFonts = (fontSecStart >= 0 ? rawHdr.slice(0, fontSecStart) : rawHdr).trimEnd();
+            const fontsSection = fontSecStart >= 0 ? rawHdr.slice(fontSecStart + 1).trimEnd() : '';
+            const evtHdr = outEvtMatch ? outEvtMatch[0].trimEnd() : '[Events]';
             let dlgOffset = 0;
             for (let j = 0; j < sortedFiles.length; j++) {
               const f = sortedFiles[j];
               const myDlgLines = allOutDlgLines.slice(dlgOffset, dlgOffset + lineCounts[j]);
               dlgOffset += lineCounts[j];
-              let fileText = headerNoFonts.trimEnd();
-              if (!wantSeparate && j === hostSortedIdx && fontsSection) fileText += '\n' + fontsSection;
-              fileText += '\n' + (outEvtMatch ? outEvtMatch[0] : '[Events]\n') + myDlgLines.join('\n');
-              if (myDlgLines.length) fileText += '\n';
+              const isHost = !wantSeparate && j === hostSortedIdx;
+              let fileText = headerPreFonts;
+              if (isHost && fontsSection) fileText += detNl + detNl + fontsSection;
+              fileText += detNl + detNl + evtHdr + detNl + myDlgLines.join(detNl);
+              if (myDlgLines.length) fileText += detNl;
               const myBlob = result.isDirect ? new Blob([f.rawBuffer]) : new Blob([fileText], { type: 'text/plain;charset=utf-8' });
               const fileIndex = S.outputBlobs.length;
-              S.fileFontBuffers[fileIndex] = result.fontBuffers || [];
+              S.fileFontBuffers[fileIndex] = j === hostSortedIdx ? (result.fontBuffers || []) : [];
               _convertResultsState.push({
                 entryName: f.file.name,
-                count: result.stats.embeddedCount,
+                count: isHost ? result.stats.embeddedCount : 0,
                 origKB: (f.rawBuffer.byteLength / 1024).toFixed(0),
                 newKB: (myBlob.size / 1024).toFixed(0),
                 fileIdx: fileIndex,
-                hasFonts: !wantSeparate && j === hostSortedIdx && (result.fontBuffers && result.fontBuffers.length > 0),
-                wantStrip, strippedCount: (result.stats.strippedNames ? result.stats.strippedNames.length : 0),
+                hasFonts: isHost && (result.fontBuffers && result.fontBuffers.length > 0),
+                wantStrip, strippedCount: result.stats.strippedNames ? result.stats.strippedNames.length : 0,
               });
               S.outputBlobs.push({ name: f.file.name, zipPath: S.groupMode ? `group${i + 1}/${f.file.name}` : (f.zipPath || null), sourceZipName: f.sourceZipName || null, blob: myBlob });
             }
