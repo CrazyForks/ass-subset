@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.3">
+  <meta name="version" content="2.7.4">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -1654,6 +1654,13 @@
             <span id="opt-randname-desc" data-i18n="opt.randname.desc">Assigns random names to embedded font subsets in the subtitle file, preventing playback engines from reusing cached fonts across episodes and causing missing characters.</span>
           </div>
         </label>
+        <label class="opt-row opt-row-sub hidden" id="opt-row-separate">
+          <input type="checkbox" id="opt-separate-fonts" aria-describedby="opt-separate-desc">
+          <div class="opt-label">
+            <strong data-i18n="opt.separatefonts.title">Separate Subtitles and Fonts</strong>
+            <span id="opt-separate-desc" data-i18n="opt.separatefonts.desc">Keep processed fonts as separate files without embedding in subtitles for independent use.</span>
+          </div>
+        </label>
         <label class="opt-row disabled" id="opt-row-strip">
           <input type="checkbox" id="opt-strip" disabled aria-describedby="opt-strip-desc">
           <div class="opt-label">
@@ -1704,19 +1711,11 @@
           <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
             <button class="btn btn-primary" id="btn-convert" data-i18n="btn.convert">Start Conversion</button>
             <button class="btn btn-success hidden" id="btn-download" data-i18n="btn.download">Download Output</button>
-          </div>
-          <div class="flex-gap" style="align-items: center; flex-wrap: wrap;">
             <label class="btn btn-outline hidden" id="opt-optimize-wrap"
               style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
               <input type="checkbox" id="opt-append-optimize" checked aria-labelledby="opt-append-optimize-lbl"
                 style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
               <span id="opt-append-optimize-lbl" data-i18n="opt.append_optimize">Add _optimized suffix</span>
-            </label>
-            <label class="btn btn-outline hidden" id="opt-separate-fonts-wrap"
-              style="gap: 0.4rem; cursor: pointer; user-select: none; display: inline-flex; align-items: center; padding: 0.78rem 1.25rem; line-height: 1; height: auto;">
-              <input type="checkbox" id="opt-separate-fonts" aria-labelledby="opt-separate-fonts-lbl"
-                style="width:14px;height:14px;accent-color:var(--ink);cursor:pointer;flex-shrink:0;">
-              <span id="opt-separate-fonts-lbl" data-i18n="opt.separate_fonts">Separate Subtitles and Fonts</span>
             </label>
           </div>
         </div>
@@ -1944,7 +1943,8 @@
         'opt.strip.desc': '移除字幕中已有的内嵌字体，并回退可逆的图形指令',
         'opt.strip.title': '移除内嵌字体',
         'opt.append_optimize': '追加 _optimized 后缀',
-        'opt.separate_fonts': '字幕与字体分离',
+        'opt.separatefonts.title': '字幕与字体分离',
+        'opt.separatefonts.desc': '字体处理后存储为独立文件，不嵌入字幕，便于独立使用',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
         'path.mac': 'macOS：/Library/Fonts（建议先复制到桌面再上传）',
         'path.win': 'Windows：C:\\Windows\\Fonts（建议先复制到桌面再上传）',
@@ -2131,7 +2131,8 @@
         'opt.strip.desc': '移除字幕中已有的內嵌字型，並回復可逆的繪圖命令',
         'opt.strip.title': '移除內嵌字型',
         'opt.append_optimize': '追加 _optimized 後綴',
-        'opt.separate_fonts': '字幕與字型分離',
+        'opt.separatefonts.title': '字幕與字型分離',
+        'opt.separatefonts.desc': '字型處理後儲存為獨立檔案，不嵌入字幕，便於獨立使用',
         'path.linux': 'Linux：~/.fonts 或 /usr/share/fonts',
         'path.mac': 'macOS：/Library/Fonts（建議先複製到桌面再上傳）',
         'path.win': 'Windows：C:\\Windows\\Fonts（建議先複製到桌面再上傳）',
@@ -2318,7 +2319,8 @@
         'opt.strip.desc': 'Remove existing embedded fonts from the subtitle and revert reversible draw commands.',
         'opt.strip.title': 'Remove Embedded Fonts',
         'opt.append_optimize': 'Add _optimized suffix',
-        'opt.separate_fonts': 'Separate Subtitles and Fonts',
+        'opt.separatefonts.title': 'Separate Subtitles and Fonts',
+        'opt.separatefonts.desc': 'Keep processed fonts as separate files without embedding in subtitles for independent use.',
         'path.linux': 'Linux: ~/.fonts or /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (copy to Desktop before uploading)',
         'path.win': 'Windows: C:\\Windows\\Fonts (copy to Desktop before uploading)',
@@ -2505,7 +2507,8 @@
         'opt.strip.desc': 'スクリプト内の既存埋め込みフォントを削除し、可逆な描画コマンドを復元します。',
         'opt.strip.title': '埋め込みフォントを削除',
         'opt.append_optimize': '_optimized 接尾辞を追加',
-        'opt.separate_fonts': '字幕とフォントを分離',
+        'opt.separatefonts.title': '字幕とフォントを分離',
+        'opt.separatefonts.desc': '処理されたフォントを字幕に含めずに別ファイルで保存し、独立した使用を可能にします。',
         'path.linux': 'Linux：~/.fonts または /usr/share/fonts',
         'path.mac': 'macOS：/Library/Fonts（アップロード前にデスクトップにコピーを推奨）',
         'path.win': 'Windows：C:\\Windows\\Fonts（アップロード前にデスクトップにコピーを推奨）',
@@ -2692,7 +2695,8 @@
         'opt.strip.desc': '자막에 포함된 기존 임베디드 폰트를 제거하고, 가역적인 드로우 명령을 복원합니다.',
         'opt.strip.title': '내장 폰트 제거',
         'opt.append_optimize': '_optimized 접미사 추가',
-        'opt.separate_fonts': '자막과 폰트 분리',
+        'opt.separatefonts.title': '자막과 폰트 분리',
+        'opt.separatefonts.desc': '처리된 글꼴을 자막에 포함하지 않고 별도 파일로 저장하여 독립적으로 사용할 수 있습니다.',
         'path.linux': 'Linux: ~/.fonts 또는 /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (업로드 전 바탕화면에 복사 권장)',
         'path.win': 'Windows: C:\\Windows\\Fonts (업로드 전 바탕화면에 복사 권장)',
@@ -2879,7 +2883,8 @@
         'opt.strip.desc': 'Elimina las fuentes incrustadas existentes en el guion y revierte los comandos de dibujo reversibles.',
         'opt.strip.title': 'Eliminar fuentes incrustadas',
         'opt.append_optimize': 'Añadir sufijo _optimized',
-        'opt.separate_fonts': 'Separar subtítulos y fuentes',
+        'opt.separatefonts.title': 'Separar subtítulos y fuentes',
+        'opt.separatefonts.desc': 'Guarda los tipos de letra procesados en archivos separados, sin incrustarlos en los subtítulos, para facilitar el uso independiente.',
         'path.linux': 'Linux: ~/.fonts o /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (copia al escritorio antes de subir)',
         'path.win': 'Windows: C:\\Windows\\Fonts (copia al escritorio antes de subir)',
@@ -3066,7 +3071,8 @@
         'opt.strip.desc': 'Удаляет существующие встроенные шрифты и восстанавливает обратимые draw-команды.',
         'opt.strip.title': 'Удалить встроенные шрифты',
         'opt.append_optimize': 'Добавить суффикс _optimized',
-        'opt.separate_fonts': 'Разделить субтитры и шрифты',
+        'opt.separatefonts.title': 'Разделить субтитры и шрифты',
+        'opt.separatefonts.desc': 'Обработанные шрифты сохраняются отдельными файлами без встраивания в субтитры для удобного независимого использования.',
         'path.linux': 'Linux: ~/.fonts или /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (скопируйте на рабочий стол перед загрузкой)',
         'path.win': 'Windows: C:\\Windows\\Fonts (скопируйте на рабочий стол перед загрузкой)',
@@ -3253,7 +3259,8 @@
         'opt.strip.desc': 'Remove fontes embutidas existentes e restaura comandos de desenho reversíveis.',
         'opt.strip.title': 'Remover Fontes Embutidas',
         'opt.append_optimize': 'Adicionar sufixo _optimized',
-        'opt.separate_fonts': 'Separar legendas e fontes',
+        'opt.separatefonts.title': 'Separar legendas e fontes',
+        'opt.separatefonts.desc': 'Armazena as fontes processadas em arquivos separados, sem incorporá-las nas legendas, facilitando o uso independiente.',
         'path.linux': 'Linux: ~/.fonts ou /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (copie para a Área de Trabalho antes de enviar)',
         'path.win': 'Windows: C:\\Windows\\Fonts (copie para a Área de Trabalho antes de enviar)',
@@ -3440,7 +3447,8 @@
         'opt.strip.desc': 'يزيل الخطوط المضمنة الموجودة في الترجمة ويستعيد أوامر الرسم القابلة للعكس.',
         'opt.strip.title': 'إزالة الخطوط المضمنة',
         'opt.append_optimize': 'إضافة لاحقة _optimized',
-        'opt.separate_fonts': 'فصل الترجمة عن الخطوط',
+        'opt.separatefonts.title': 'فصل الترجمة عن الخطوط',
+        'opt.separatefonts.desc': 'احفظ الخطوط المعالجة في ملفات منفصلة دون تضمينها في النصوص الفرعية لتسهيل الاستخدام المستقل.',
         'path.linux': 'Linux: ~/.fonts أو /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (انسخ إلى سطح المكتب قبل الرفع)',
         'path.win': 'Windows: C:\\Windows\\Fonts (انسخ إلى سطح المكتب قبل الرفع)',
@@ -3627,7 +3635,8 @@
         'opt.strip.desc': 'Altyazıdaki mevcut gömülü yazı tiplerini kaldırır ve geri alınabilir çizim komutlarını geri yükler.',
         'opt.strip.title': 'Gömülü Fontları Kaldır',
         'opt.append_optimize': '_optimized son ekini ekle',
-        'opt.separate_fonts': 'Altyazı ve fontları ayır',
+        'opt.separatefonts.title': 'Altyazı ve fontları ayır',
+        'opt.separatefonts.desc': 'İşlenen yazı tiplerini altyazılara gömülmeden ayrı dosyalar halinde saklayarak bağımsız kullanımı kolaylaştırır.',
         'path.linux': 'Linux: ~/.fonts veya /usr/share/fonts',
         'path.mac': 'macOS: /Library/Fonts (yüklemeden önce masaüstüne kopyalayın)',
         'path.win': 'Windows: C:\\Windows\\Fonts (yüklemeden önce masaüstüne kopyalayın)',
@@ -4368,8 +4377,6 @@
       if (btnDownload) btnDownload.classList.add('hidden');
       const optOptimizeWrapReset = document.getElementById('opt-optimize-wrap');
       if (optOptimizeWrapReset) optOptimizeWrapReset.classList.add('hidden');
-      const optSeparateWrapReset = document.getElementById('opt-separate-fonts-wrap');
-      if (optSeparateWrapReset) optSeparateWrapReset.classList.add('hidden');
       const btnConvert = document.getElementById('btn-convert');
       if (btnConvert) {
         btnConvert.disabled = false;
@@ -5380,7 +5387,6 @@
       resultArea.innerHTML = '';
       btnDownload.classList.add('hidden');
       document.getElementById('opt-optimize-wrap').classList.add('hidden');
-      document.getElementById('opt-separate-fonts-wrap').classList.add('hidden');
       btnConvert.disabled = true;
       btnConvert.innerHTML = '<span class="spinner"></span> ' + t('btn.converting');
       S.converting = true;
@@ -5396,7 +5402,7 @@
 
       const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
       const wantRandFont = document.getElementById('opt-randname') && document.getElementById('opt-randname').checked;
-      const wantSeparate = document.getElementById('opt-separate-fonts').checked;
+      const wantSeparate = !wantStrip && document.getElementById('opt-separate-fonts').checked;
       const fonts = Array.from(S.uploadedFonts.values()).map(info => ({
         name: info.file.name,
         buffer: info.buffer,
@@ -5452,7 +5458,10 @@
             });
           }
 
-          const blob = result.isDirect ? result.finalBlob : (new Blob([result.finalText], { type: 'text/plain;charset=utf-8' }));
+          const finalText = (!result.isDirect && wantSeparate)
+            ? result.finalText.replace(/\r?\n\[Fonts\][\s\S]*?(?=\r?\n\[|$)/i, '')
+            : result.finalText;
+          const blob = result.isDirect ? result.finalBlob : (new Blob([finalText], { type: 'text/plain;charset=utf-8' }));
           S.fileFontBuffers[i] = result.fontBuffers || [];
           if (result.fontBuffers) S.fontBuffers = S.fontBuffers.concat(result.fontBuffers);
 
@@ -5502,10 +5511,10 @@
           }
 
           const origKB = (result.origSize / 1024).toFixed(0);
-          const newKB = (result.newSize / 1024).toFixed(0);
+          const newKB = wantSeparate ? (blob.size / 1024).toFixed(0) : (result.newSize / 1024).toFixed(0);
           _convertResultsState.push({
             entryName: entry.file.name,
-            count: result.stats.embeddedCount,
+            count: wantSeparate ? 0 : result.stats.embeddedCount,
             origKB, newKB, fileIdx: i,
             hasFonts: (result.fontBuffers && result.fontBuffers.length > 0),
             wantStrip,
@@ -5518,8 +5527,6 @@
 
         const optWrap = document.getElementById('opt-optimize-wrap');
         if (optWrap) optWrap.classList.remove('hidden');
-        const optSeparateWrap = document.getElementById('opt-separate-fonts-wrap');
-        if (optSeparateWrap) optSeparateWrap.classList.remove('hidden');
         btnDownload.classList.remove('hidden');
         btnDownload.onclick = downloadOutput;
         updateDownloadButtonLabel();
@@ -5784,7 +5791,7 @@
       const rect = listContainer.getBoundingClientRect();
       const listW = rect.width > 0 ? rect.width - 16 : 624;
 
-      buffers.forEach(fb => {
+      buffers.forEach(async fb => {
         const wrapper = document.createElement('div');
         wrapper.style.marginBottom = '0.5rem';
 
@@ -5924,15 +5931,22 @@
           const offsetX = Math.max(0, (logicalW - gridW) / 2);
           const offsetY = Math.max(0, (logicalH - gridH) / 2);
 
+          const fontFaceName = 'pf_' + Math.random().toString(36).slice(2);
+          const fontFace = new FontFace(fontFaceName, buf);
+          await fontFace.load();
+          document.fonts.add(fontFace);
+
+          ctx.font = `${fontSize}px "${fontFaceName}"`;
+          ctx.fillStyle = '#333333';
+          ctx.textBaseline = 'alphabetic';
+
           glyphs.forEach((g, gidx) => {
             const col = gidx % cols;
             const row = Math.floor(gidx / cols);
             const x = offsetX + col * cellSize + cellSize * 0.15;
             const y = offsetY + row * cellSize + cellSize * 0.8;
             if (y <= logicalH + cellSize) {
-              const path = font.getPath(String.fromCodePoint(g.unicode), x, y, fontSize);
-              path.fill = '#333333';
-              path.draw(ctx);
+              ctx.fillText(String.fromCodePoint(g.unicode), x, y);
             }
           });
         } catch (e) {
@@ -6070,6 +6084,7 @@
       cbDraw.addEventListener('change', () => {
         rowDraw.classList.toggle('selected', cbDraw.checked);
         document.getElementById('drawing-notice').classList.toggle('hidden', !cbDraw.checked);
+        updateSeparateRow();
         enforceMutualExclusion();
         updateStep4Visibility();
       });
@@ -6127,6 +6142,18 @@
         } else if (anyFont) {
           document.getElementById('randname-notice').classList.toggle('hidden', !randNameCb.checked);
         }
+        updateSeparateRow();
+      };
+
+      const updateSeparateRow = () => {
+        const anyOp = cbDraw.checked || cbFont.checked || optSysFont.checked;
+        const sepRow = document.getElementById('opt-row-separate');
+        const sepCb = document.getElementById('opt-separate-fonts');
+        sepRow.classList.toggle('hidden', !anyOp || cbStrip.checked);
+        if (!anyOp || cbStrip.checked) {
+          sepCb.checked = false;
+          sepRow.classList.remove('selected');
+        }
       };
 
       const cbAscii = document.getElementById('opt-ascii');
@@ -6136,8 +6163,8 @@
       });
 
       document.getElementById('opt-separate-fonts').addEventListener('change', () => {
-        const btnDownload = document.getElementById('btn-download');
-        if (btnDownload && !btnDownload.classList.contains('hidden')) updateDownloadButtonLabel();
+        document.getElementById('opt-row-separate').classList.toggle('selected', document.getElementById('opt-separate-fonts').checked);
+        updateDownloadButtonLabel();
       });
 
       cbFont.addEventListener('change', () => {
@@ -6178,6 +6205,7 @@
       });
       cbStrip.addEventListener('change', () => {
         rowStrip.classList.toggle('selected', cbStrip.checked);
+        updateSeparateRow();
         enforceMutualExclusion();
         updateStep4Visibility();
       });
