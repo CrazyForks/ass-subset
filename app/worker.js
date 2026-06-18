@@ -1380,6 +1380,95 @@ const NAME_ID_MAP = {
   designerURL: 12, license: 13, licenseURL: 14,
   preferredFamily: 16, preferredSubfamily: 17,
 };
+function copyExtraTables(subsetBuffer, origBuffer) {
+  const sub = subsetBuffer instanceof ArrayBuffer ? new Uint8Array(subsetBuffer) : subsetBuffer;
+  const orig = origBuffer instanceof ArrayBuffer ? new Uint8Array(origBuffer) : origBuffer;
+  const readU32 = (buf, off) => new DataView(buf.buffer, buf.byteOffset + off, 4).getUint32(0, false);
+  const readU16 = (buf, off) => new DataView(buf.buffer, buf.byteOffset + off, 2).getUint16(0, false);
+  const writeU32 = (buf, off, val) => new DataView(buf.buffer, buf.byteOffset + off, 4).setUint32(0, val, false);
+  const writeU16 = (buf, off, val) => new DataView(buf.buffer, buf.byteOffset + off, 2).setUint16(0, val, false);
+  
+  const findTable = (buf, tag) => {
+    if (buf.length < 12) return null;
+    const num = readU16(buf, 4);
+    for (let i = 0; i < num; i++) {
+      if (readU32(buf, 12 + i * 16) === tag) {
+        return { off: readU32(buf, 12 + i * 16 + 8), len: readU32(buf, 12 + i * 16 + 12) };
+      }
+    }
+    return null;
+  };
+  
+  const extraTags = [0x6670676d, 0x70726570, 0x63767420, 0x47535542, 0x47504f53];
+  const extraTables = [];
+  for (const tag of extraTags) {
+    const info = findTable(orig, tag);
+    if (info) extraTables.push({ tag, ...info });
+  }
+  if (extraTables.length === 0) return subsetBuffer;
+  
+  const subNumTables = readU16(sub, 4);
+  const tableEntries = [];
+  for (let i = 0; i < subNumTables; i++) {
+    tableEntries.push({ tag: readU32(sub, 12 + i * 16), i, isNew: false });
+  }
+  for (const h of extraTables) {
+    if (!tableEntries.find(e => e.tag === h.tag)) {
+      tableEntries.push({ tag: h.tag, isNew: true });
+    }
+  }
+  
+  const newNumTables = tableEntries.length;
+  if (newNumTables === subNumTables) return subsetBuffer;
+  
+  tableEntries.sort((a, b) => a.tag - b.tag);
+  
+  const newHeaderSize = 12 + newNumTables * 16;
+  let totalDataSize = 0;
+  for (const e of tableEntries) {
+    if (e.isNew) {
+      const h = extraTables.find(x => x.tag === e.tag);
+      totalDataSize += (h.len + 3) & ~3;
+    } else {
+      const len = readU32(sub, 12 + e.i * 16 + 12);
+      totalDataSize += (len + 3) & ~3;
+    }
+  }
+  
+  const result = new Uint8Array(newHeaderSize + totalDataSize);
+  const searchRange = Math.pow(2, Math.floor(Math.log2(newNumTables))) * 16;
+  const entrySelector = Math.floor(Math.log2(newNumTables));
+  const rangeShift = newNumTables * 16 - searchRange;
+  
+  writeU32(result, 0, readU32(sub, 0));
+  writeU16(result, 4, newNumTables);
+  writeU16(result, 6, searchRange);
+  writeU16(result, 8, entrySelector);
+  writeU16(result, 10, rangeShift);
+  
+  let dataPos = newHeaderSize;
+  for (let i = 0; i < tableEntries.length; i++) {
+    const e = tableEntries[i];
+    const entryOff = 12 + i * 16;
+    writeU32(result, entryOff, e.tag);
+    writeU32(result, entryOff + 4, 0);
+    writeU32(result, entryOff + 8, dataPos);
+    
+    if (e.isNew) {
+      const hint = extraTables.find(h => h.tag === e.tag);
+      writeU32(result, entryOff + 12, hint.len);
+      result.set(orig.slice(hint.off, hint.off + hint.len), dataPos);
+      dataPos += (hint.len + 3) & ~3;
+    } else {
+      const oldOff = readU32(sub, 12 + e.i * 16 + 8);
+      const len = readU32(sub, 12 + e.i * 16 + 12);
+      writeU32(result, entryOff + 12, len);
+      result.set(sub.slice(oldOff, oldOff + len), dataPos);
+      dataPos += (len + 3) & ~3;
+    }
+  }
+  return result;
+}
 function modifyNameTable(buffer, newNames) {
   const ensureTTF = (buf) => {
     const v = new DataView(buf instanceof ArrayBuffer ? buf : buf.buffer ?? buf);
@@ -1600,6 +1689,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   }
   let glyphs = [];
   let skipped = 0;
+  const hintTables = ['fpgm', 'prep', 'cvt ', 'gasp', 'GSUB', 'GPOS', 'GDEF', 'hdmx', 'VDMX', 'LTSH'];
   if (wantFullFont) {
     for (let i = 0; i < orig.glyphs.length; i++) {
       glyphs.push(orig.glyphs.get(i));
@@ -1668,6 +1758,11 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
     newFont.tables.os2.usWeightClass = orig.tables.os2.usWeightClass;
     newFont.tables.os2.fsSelection = orig.tables.os2.fsSelection;
   }
+  hintTables.forEach(t => {
+    if (orig.tables && orig.tables[t]) {
+      newFont.tables[t] = orig.tables[t];
+    }
+  });
   const dateStr = buildSubsetDateString();
   const subsetSuffix = `; Subsetted via ASS Subsetter (${PROJECT_URL}) on ${dateStr}`;
   const vendorSuffix = '; MontageSubs (ASS Subsetter)';
