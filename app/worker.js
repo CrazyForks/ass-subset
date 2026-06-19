@@ -1658,6 +1658,235 @@ function modifyNameTable(buffer, newNames) {
   outView.setUint32(nameDirOffset + 12, newNameTableSize, false);
   return out.buffer;
 }
+function binaryTTFSubset(buffer, charArray, origFont) {
+  const view = new DataView(buffer);
+  const numTables = view.getUint16(4, false);
+  const tables = {};
+  for (let i = 0; i < numTables; i++) {
+    const tag = view.getUint32(12 + i * 16, false);
+    tables[tag] = {
+      offset: view.getUint32(12 + i * 16 + 8, false),
+      length: view.getUint32(12 + i * 16 + 12, false)
+    };
+  }
+  if (!tables[0x676c7966] || !tables[0x6c6f6361] || !tables[0x6d617870] || !tables[0x68656164]) return null;
+
+  const maxpOffset = tables[0x6d617870].offset;
+  const numGlyphs = view.getUint16(maxpOffset + 4, false);
+  const headOffset = tables[0x68656164].offset;
+  const indexToLocFormat = view.getInt16(headOffset + 50, false);
+  const locaOffset = tables[0x6c6f6361].offset;
+  const getLoca = (idx) => indexToLocFormat === 0
+    ? view.getUint16(locaOffset + idx * 2, false) * 2
+    : view.getUint32(locaOffset + idx * 4, false);
+  const glyfOffset = tables[0x676c7966].offset;
+
+  const keepGlyphs = new Uint8Array(numGlyphs);
+  keepGlyphs[0] = 1;
+  for (const char of charArray) {
+    const g = origFont.charToGlyph(char);
+    if (g && g.index > 0 && g.index < numGlyphs) keepGlyphs[g.index] = 1;
+  }
+
+  const u8 = new Uint8Array(buffer);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < numGlyphs; i++) {
+      if (keepGlyphs[i] === 1) {
+        const off = getLoca(i);
+        const len = getLoca(i + 1) - off;
+        if (len > 0) {
+          const numContours = view.getInt16(glyfOffset + off, false);
+          if (numContours < 0) {
+            let pos = glyfOffset + off + 10;
+            let flags;
+            do {
+              flags = view.getUint16(pos, false);
+              const glyphIndex = view.getUint16(pos + 2, false);
+              if (glyphIndex < numGlyphs && keepGlyphs[glyphIndex] === 0) {
+                keepGlyphs[glyphIndex] = 1;
+                changed = true;
+              }
+              pos += 4;
+              if (flags & 1) pos += 4;
+              else pos += 2;
+              if (flags & 8) pos += 2;
+              else if (flags & 64) pos += 4;
+              else if (flags & 128) pos += 8;
+            } while (flags & 32);
+          }
+        }
+        keepGlyphs[i] = 2;
+      }
+    }
+  }
+
+  const newLoca = new Uint8Array((numGlyphs + 1) * 4);
+  const newLocaView = new DataView(newLoca.buffer);
+  const newGlyfChunks = [];
+  let currentOffset = 0;
+
+  for (let i = 0; i < numGlyphs; i++) {
+    newLocaView.setUint32(i * 4, currentOffset, false);
+    if (keepGlyphs[i]) {
+      const off = getLoca(i);
+      const len = getLoca(i + 1) - off;
+      if (len > 0) {
+        newGlyfChunks.push(u8.slice(glyfOffset + off, glyfOffset + off + len));
+        currentOffset += len;
+        if (currentOffset % 2 !== 0) {
+          newGlyfChunks.push(new Uint8Array([0]));
+          currentOffset++;
+        }
+      }
+    }
+  }
+  newLocaView.setUint32(numGlyphs * 4, currentOffset, false);
+
+  const newGlyf = new Uint8Array(currentOffset);
+  let ptr = 0;
+  for (const chunk of newGlyfChunks) {
+    newGlyf.set(chunk, ptr);
+    ptr += chunk.length;
+  }
+
+  const map4 = [];
+  const map12 = [];
+  for (let i = 0; i < numGlyphs; i++) {
+    if (keepGlyphs[i]) {
+      const g = origFont.glyphs.get(i);
+      if (!g) continue;
+      const ucs = (g.unicodes && g.unicodes.length) ? g.unicodes : (g.unicode !== undefined ? [g.unicode] : []);
+      for (const u of ucs) {
+        if (u <= 0xFFFF) map4.push({u, i});
+        map12.push({u, i});
+      }
+    }
+  }
+  map4.sort((a,b) => a.u - b.u);
+  map12.sort((a,b) => a.u - b.u);
+
+  const seg4 = [];
+  let cur = null;
+  for (const m of map4) {
+    if (!cur) {
+      cur = {s: m.u, e: m.u, d: (m.i - m.u + 0x10000) % 0x10000};
+    } else if (m.u === cur.e + 1 && ((m.i - m.u + 0x10000) % 0x10000) === cur.d) {
+      cur.e = m.u;
+    } else {
+      seg4.push(cur);
+      cur = {s: m.u, e: m.u, d: (m.i - m.u + 0x10000) % 0x10000};
+    }
+  }
+  if (cur) seg4.push(cur);
+  seg4.push({s: 0xFFFF, e: 0xFFFF, d: 1});
+
+  const seg12 = [];
+  cur = null;
+  for (const m of map12) {
+    if (!cur) {
+      cur = {s: m.u, e: m.u, gid: m.i};
+    } else if (m.u === cur.e + 1 && m.i === cur.gid + (m.u - cur.s)) {
+      cur.e = m.u;
+    } else {
+      seg12.push(cur);
+      cur = {s: m.u, e: m.u, gid: m.i};
+    }
+  }
+  if (cur) seg12.push(cur);
+
+  const segCount = seg4.length;
+  const searchRange4 = 2 * Math.pow(2, Math.floor(Math.log2(segCount)));
+  const entrySelector4 = Math.log2(searchRange4 / 2);
+  const rangeShift4 = 2 * segCount - searchRange4;
+  const f4Len = 16 + 8 * segCount;
+  const f12Len = 16 + 12 * seg12.length;
+  const newCmap = new Uint8Array(28 + f4Len + f12Len);
+  const cv = new DataView(newCmap.buffer);
+  
+  cv.setUint16(0, 0, false);
+  cv.setUint16(2, 2, false);
+  cv.setUint16(4, 3, false);
+  cv.setUint16(6, 1, false);
+  cv.setUint32(8, 28, false);
+  cv.setUint16(12, 3, false);
+  cv.setUint16(14, 10, false);
+  cv.setUint32(16, 28 + f4Len, false);
+
+  let o = 28;
+  cv.setUint16(o, 4, false);
+  cv.setUint16(o+2, f4Len, false);
+  cv.setUint16(o+4, 0, false);
+  cv.setUint16(o+6, segCount * 2, false);
+  cv.setUint16(o+8, searchRange4, false);
+  cv.setUint16(o+10, entrySelector4, false);
+  cv.setUint16(o+12, rangeShift4, false);
+  o += 14;
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].e, false); o+=2; }
+  cv.setUint16(o, 0, false); o+=2;
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].s, false); o+=2; }
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].d, false); o+=2; }
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, 0, false); o+=2; }
+
+  o = 28 + f4Len;
+  cv.setUint16(o, 12, false);
+  cv.setUint16(o+2, 0, false);
+  cv.setUint32(o+4, f12Len, false);
+  cv.setUint32(o+8, 0, false);
+  cv.setUint32(o+12, seg12.length, false);
+  o += 16;
+  for (let i=0; i<seg12.length; i++) {
+    cv.setUint32(o, seg12[i].s, false);
+    cv.setUint32(o+4, seg12[i].e, false);
+    cv.setUint32(o+8, seg12[i].gid, false);
+    o += 12;
+  }
+
+  const newTables = [];
+  for (let i = 0; i < numTables; i++) {
+    const tag = view.getUint32(12 + i * 16, false);
+    if (tag === 0x676c7966) newTables.push({ tag, data: newGlyf });
+    else if (tag === 0x6c6f6361) newTables.push({ tag, data: newLoca });
+    else if (tag === 0x636d6170) newTables.push({ tag, data: newCmap });
+    else {
+      const off = tables[tag].offset;
+      const len = tables[tag].length;
+      const data = u8.slice(off, off + len);
+      if (tag === 0x68656164) {
+        new DataView(data.buffer, data.byteOffset, data.byteLength).setInt16(50, 1, false);
+      }
+      newTables.push({ tag, data });
+    }
+  }
+
+  newTables.sort((a, b) => a.tag - b.tag);
+  const headerSize = 12 + newTables.length * 16;
+  let totalDataSize = 0;
+  for (const t of newTables) totalDataSize += (t.data.length + 3) & ~3;
+
+  const out = new Uint8Array(headerSize + totalDataSize);
+  const outView = new DataView(out.buffer);
+  outView.setUint32(0, view.getUint32(0, false), false);
+  outView.setUint16(4, newTables.length, false);
+  const searchRangeOut = Math.pow(2, Math.floor(Math.log2(newTables.length))) * 16;
+  outView.setUint16(6, searchRangeOut, false);
+  outView.setUint16(8, Math.floor(Math.log2(newTables.length)), false);
+  outView.setUint16(10, newTables.length * 16 - searchRangeOut, false);
+
+  let offset = headerSize;
+  for (let i = 0; i < newTables.length; i++) {
+    const t = newTables[i];
+    const base = 12 + i * 16;
+    outView.setUint32(base, t.tag, false);
+    outView.setUint32(base + 4, 0, false);
+    outView.setUint32(base + 8, offset, false);
+    outView.setUint32(base + 12, t.data.length, false);
+    out.set(t.data, offset);
+    offset += (t.data.length + 3) & ~3;
+  }
+  return repairFontBuffer(out);
+}
 async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, ttcIndex, id, wantAscii, wantFullFont, aliasNames) {
   aliasNames = aliasNames || [];
   let orig;
@@ -1687,51 +1916,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   } else {
     fullCharArray = charArray;
   }
-  let glyphs = [];
-  let skipped = 0;
-  const hintTables = ['fpgm', 'prep', 'cvt ', 'gasp', 'GSUB', 'GPOS', 'GDEF', 'hdmx', 'VDMX', 'LTSH'];
-  if (wantFullFont) {
-    for (let i = 0; i < orig.glyphs.length; i++) {
-      glyphs.push(orig.glyphs.get(i));
-    }
-  } else {
-    const origNotdef = orig.glyphs.get(0);
-    const notdef = new opentype.Glyph({
-      name: '.notdef', unicode: 0,
-      advanceWidth: origNotdef?.advanceWidth || 500,
-      path: new opentype.Path()
-    });
-    glyphs.push(notdef);
-    const seen = new Set([0]);
-    const total = fullCharArray.length;
-    for (let ci = 0; ci < total; ci++) {
-      if (ci % 500 === 0) {
-        emitProgress(id, 'subset', ci, total);
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-      const char = fullCharArray[ci];
-      const cp = char.codePointAt(0);
-      if (seen.has(cp)) continue;
-      const origGlyph = orig.charToGlyph(char);
-      if (!origGlyph || origGlyph.index === 0) { skipped++; continue; }
-      const rendered = orig.getPath(char, 0, 0, orig.unitsPerEm);
-      const newPath = new opentype.Path();
-      for (const cmd of rendered.commands) {
-        switch (cmd.type) {
-          case 'M': newPath.moveTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'L': newPath.lineTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'C': newPath.curveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x2), Math.round(-cmd.y2), Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'Q': newPath.quadraticCurveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'Z': newPath.close(); break;
-        }
-      }
-      glyphs.push(new opentype.Glyph({
-        name: origGlyph.name || `glyph_${cp}`,
-        unicode: cp, advanceWidth: origGlyph.advanceWidth, path: newPath
-      }));
-      seen.add(cp);
-    }
-  }
+
   const origSubfamilyField = getOrigNameField(orig, 'preferredSubfamily') || getOrigNameField(orig, 'fontSubfamily');
   let origSubfamilyStr = '';
   if (origSubfamilyField) {
@@ -1745,24 +1930,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   }
   const canonicalSubfamily = isTargetBold && isTargetItalic ? 'Bold Italic' : isTargetBold ? 'Bold' : isTargetItalic ? 'Italic' : 'Regular';
   const subfamilyName = origSubfamilyStr || canonicalSubfamily;
-  const newFont = new opentype.Font({
-    familyName: fontName,
-    styleName: canonicalSubfamily,
-    unitsPerEm: orig.unitsPerEm,
-    ascender: orig.ascender,
-    descender: orig.descender,
-    glyphs
-  });
-  if (orig.tables?.os2) {
-    newFont.tables.os2 = Object.assign({}, orig.tables.os2);
-    newFont.tables.os2.usWeightClass = orig.tables.os2.usWeightClass;
-    newFont.tables.os2.fsSelection = orig.tables.os2.fsSelection;
-  }
-  hintTables.forEach(t => {
-    if (orig.tables && orig.tables[t]) {
-      newFont.tables[t] = orig.tables[t];
-    }
-  });
+
   const dateStr = buildSubsetDateString();
   const subsetSuffix = `; Subsetted via ASS Subsetter (${PROJECT_URL}) on ${dateStr}`;
   const vendorSuffix = '; MontageSubs (ASS Subsetter)';
@@ -1893,17 +2061,98 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
     }
     if (Object.keys(newNames.licenseURL).length === 0) delete newNames.licenseURL;
   }
-  const newNamesForOpentype = Object.fromEntries(Object.entries(newNames).filter(([k]) => k !== '_aliasNames'));
-  newFont.names = newNamesForOpentype;
+
+  const baseBuffer = isTTC && ttcIndex !== undefined && ttcIndex !== -1 ? extractTTFFromTTC(fontBuffer, ttcIndex) : fontBuffer;
   let rawTTF;
-  if (wantFullFont) {
-    const baseBuffer = isTTC && ttcIndex !== undefined && ttcIndex !== -1 ? extractTTFFromTTC(fontBuffer, ttcIndex) : fontBuffer;
-    rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
-  } else {
-    const baseTTF = new Uint8Array(newFont.toArrayBuffer());
-    rawTTF = aliasNames.length > 0
-      ? repairFontBuffer(new Uint8Array(modifyNameTable(baseTTF.buffer, newNames)))
-      : repairFontBuffer(baseTTF);
+  let skipped = 0;
+
+  if (orig.outlinesFormat === 'truetype') {
+    if (!wantFullFont) {
+      const sparseTTF = binaryTTFSubset(baseBuffer, fullCharArray, orig);
+      if (sparseTTF) {
+        rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(sparseTTF.buffer, newNames)));
+      }
+    } else {
+      rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
+    }
+  }
+
+  if (!rawTTF) {
+    let glyphs = [];
+    const hintTables = ['fpgm', 'prep', 'cvt ', 'gasp', 'GSUB', 'GPOS', 'GDEF', 'hdmx', 'VDMX', 'LTSH'];
+    if (wantFullFont) {
+      for (let i = 0; i < orig.glyphs.length; i++) {
+        glyphs.push(orig.glyphs.get(i));
+      }
+    } else {
+      const origNotdef = orig.glyphs.get(0);
+      const notdef = new opentype.Glyph({
+        name: '.notdef', unicode: 0,
+        advanceWidth: origNotdef?.advanceWidth || 500,
+        path: new opentype.Path()
+      });
+      glyphs.push(notdef);
+      const seen = new Set([0]);
+      const total = fullCharArray.length;
+      for (let ci = 0; ci < total; ci++) {
+        if (ci % 500 === 0) {
+          emitProgress(id, 'subset', ci, total);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const char = fullCharArray[ci];
+        const cp = char.codePointAt(0);
+        if (seen.has(cp)) continue;
+        const origGlyph = orig.charToGlyph(char);
+        if (!origGlyph || origGlyph.index === 0) { skipped++; continue; }
+        const rendered = orig.getPath(char, 0, 0, orig.unitsPerEm);
+        const newPath = new opentype.Path();
+        for (const cmd of rendered.commands) {
+          switch (cmd.type) {
+            case 'M': newPath.moveTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'L': newPath.lineTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'C': newPath.curveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x2), Math.round(-cmd.y2), Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'Q': newPath.quadraticCurveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'Z': newPath.close(); break;
+          }
+        }
+        glyphs.push(new opentype.Glyph({
+          name: origGlyph.name || `glyph_${cp}`,
+          unicode: cp, advanceWidth: origGlyph.advanceWidth, path: newPath
+        }));
+        seen.add(cp);
+      }
+    }
+    const newFont = new opentype.Font({
+      familyName: fontName,
+      styleName: canonicalSubfamily,
+      unitsPerEm: orig.unitsPerEm,
+      ascender: orig.ascender,
+      descender: orig.descender,
+      glyphs
+    });
+    if (orig.tables?.os2) {
+      newFont.tables.os2 = Object.assign({}, orig.tables.os2);
+      newFont.tables.os2.usWeightClass = orig.tables.os2.usWeightClass;
+      newFont.tables.os2.fsSelection = orig.tables.os2.fsSelection;
+    }
+    hintTables.forEach(t => {
+      if (orig.tables && orig.tables[t]) {
+        newFont.tables[t] = orig.tables[t];
+      }
+    });
+
+    const newNamesForOpentype = Object.fromEntries(Object.entries(newNames).filter(([k]) => k !== '_aliasNames'));
+    newFont.names = newNamesForOpentype;
+
+    if (wantFullFont) {
+      rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
+    } else {
+      const baseTTF = new Uint8Array(newFont.toArrayBuffer());
+      rawTTF = aliasNames.length > 0
+        ? repairFontBuffer(new Uint8Array(modifyNameTable(baseTTF.buffer, newNames)))
+        : repairFontBuffer(baseTTF);
+      rawTTF = copyExtraTables(rawTTF, baseBuffer);
+    }
   }
 
   return {
