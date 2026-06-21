@@ -2209,9 +2209,7 @@ function rewriteASS(rawContent, opts, id) {
     const trimmed = block.trim();
     if (!trimmed) continue;
     const header = (trimmed.match(/^\[([^\]]+)\]/i)?.[1] || '').toLowerCase();
-    if (header === 'fonts') {
-      if (!wantEmbed || !embeddedFonts || embeddedFonts.length === 0) continue;
-    }
+    if (header === 'fonts') continue;
     if (header === 'script info') {
       const lines = block.split(/\r?\n/);
       const cleanLines = lines.filter(l => !/^;\s*Font Subset:/i.test(l.trim()));
