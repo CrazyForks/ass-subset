@@ -1887,6 +1887,39 @@ function binaryTTFSubset(buffer, charArray, origFont) {
   }
   return repairFontBuffer(out);
 }
+const SHAPING_REQUIRED_SCRIPTS = [
+  [0x0600, 0x06FF], // Arabic
+  [0x0700, 0x074F], // Syriac
+  [0x0750, 0x077F], // Arabic Supplement
+  [0x0780, 0x07BF], // Thaana
+  [0x07C0, 0x07FF], // N'Ko
+  [0x0840, 0x085F], // Mandaic
+  [0x08A0, 0x08FF], // Arabic Extended-A
+  [0xFB50, 0xFDFF], // Arabic Presentation Forms-A
+  [0xFE70, 0xFEFF], // Arabic Presentation Forms-B
+  [0x0900, 0x097F], // Devanagari
+  [0x0980, 0x09FF], // Bengali
+  [0x0A00, 0x0A7F], // Gurmukhi
+  [0x0A80, 0x0AFF], // Gujarati
+  [0x0B00, 0x0B7F], // Oriya
+  [0x0B80, 0x0BFF], // Tamil
+  [0x0C00, 0x0C7F], // Telugu
+  [0x0C80, 0x0CFF], // Kannada
+  [0x0D00, 0x0D7F], // Malayalam
+  [0x0D80, 0x0DFF], // Sinhala
+  [0x0E00, 0x0E7F], // Thai
+  [0x0E80, 0x0EFF], // Lao
+  [0x0F00, 0x0FFF], // Tibetan
+  [0x1000, 0x109F], // Myanmar
+  [0x1780, 0x17FF], // Khmer
+  [0x1800, 0x18AF], // Mongolian
+];
+function requiresComplexScriptShaping(chars) {
+  return chars.some(c => {
+    const cp = c.codePointAt(0);
+    return SHAPING_REQUIRED_SCRIPTS.some(([lo, hi]) => cp >= lo && cp <= hi);
+  });
+}
 async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, ttcIndex, id, wantAscii, wantFullFont, aliasNames) {
   aliasNames = aliasNames || [];
   let orig;
@@ -2667,7 +2700,7 @@ async function doConvert(data, id) {
       if (!best) return;
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: 'normal', chars: allChars.length });
       try {
-        const result = await subsetFont(best.buffer, allChars, fontNameStr, best.isTTC, 'normal', best.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
+        const result = await subsetFont(best.buffer, allChars, fontNameStr, best.isTTC, 'normal', best.ttcIndex, id, options.wantAscii, options.wantFullFont || requiresComplexScriptShaping(allChars), aliasNames);
         embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: best.weight, weightSlot: 'normal', subfamilyName: best.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: 'normal', origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
@@ -2733,7 +2766,7 @@ async function doConvert(data, id) {
       const wLabel = primarySlot.key;
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: wLabel, chars: mergedChars.length });
       try {
-        const result = await subsetFont(candidate.buffer, mergedChars, fontNameStr, candidate.isTTC, primarySlot.key, candidate.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
+        const result = await subsetFont(candidate.buffer, mergedChars, fontNameStr, candidate.isTTC, primarySlot.key, candidate.ttcIndex, id, options.wantAscii, options.wantFullFont || requiresComplexScriptShaping(mergedChars), aliasNames);
         embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: candidate.weight, weightSlot: primarySlot.key, subfamilyName: candidate.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: wLabel, origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
