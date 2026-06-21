@@ -1399,7 +1399,7 @@ function copyExtraTables(subsetBuffer, origBuffer) {
     return null;
   };
   
-  const extraTags = [0x6670676d, 0x70726570, 0x63767420, 0x47535542, 0x47504f53];
+  const extraTags = [0x6670676d, 0x70726570, 0x63767420];
   const extraTables = [];
   for (const tag of extraTags) {
     const info = findTable(orig, tag);
@@ -2151,7 +2151,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
       rawTTF = aliasNames.length > 0
         ? repairFontBuffer(new Uint8Array(modifyNameTable(baseTTF.buffer, newNames)))
         : repairFontBuffer(baseTTF);
-      rawTTF = copyExtraTables(rawTTF, baseBuffer);
+      rawTTF = repairFontBuffer(copyExtraTables(rawTTF, baseBuffer));
     }
   }
 
