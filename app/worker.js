@@ -1399,7 +1399,7 @@ function copyExtraTables(subsetBuffer, origBuffer) {
     return null;
   };
   
-  const extraTags = [0x6670676d, 0x70726570, 0x63767420];
+  const extraTags = [0x6670676d, 0x70726570, 0x63767420, 0x67617370];
   const extraTables = [];
   for (const tag of extraTags) {
     const info = findTable(orig, tag);
@@ -1849,7 +1849,7 @@ function binaryTTFSubset(buffer, charArray, origFont) {
     if (tag === 0x676c7966) newTables.push({ tag, data: newGlyf });
     else if (tag === 0x6c6f6361) newTables.push({ tag, data: newLoca });
     else if (tag === 0x636d6170) newTables.push({ tag, data: newCmap });
-    else {
+    else if (tag !== 0x44534947) {
       const off = tables[tag].offset;
       const len = tables[tag].length;
       const data = u8.slice(off, off + len);
@@ -2112,7 +2112,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
 
   if (!rawTTF) {
     let glyphs = [];
-    const hintTables = ['fpgm', 'prep', 'cvt ', 'gasp', 'GSUB', 'GPOS', 'GDEF', 'hdmx', 'VDMX', 'LTSH'];
+    const hintTables = ['gasp', 'cpal'];
     if (wantFullFont) {
       for (let i = 0; i < orig.glyphs.length; i++) {
         glyphs.push(orig.glyphs.get(i));
