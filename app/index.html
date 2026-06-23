@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.10">
+  <meta name="version" content="2.7.11">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -3678,6 +3678,28 @@
       },
     };
 
+    function subfamilyI18n(sub) {
+      const s = (sub || '').toLowerCase();
+      return (s === 'bold italic' || s === 'bolditalic') ? t('font.weight.boldItalic')
+        : s === 'bold' ? t('font.weight.bold')
+        : (s === 'italic' || s === 'oblique') ? t('font.weight.italic')
+        : (s === 'regular' || s === 'normal' || s === '') ? t('font.weight.normal')
+        : (s === 'thin' || s === 'hairline' || s === 'w1') ? t('font.weight.thin')
+        : (s === 'extralight' || s === 'extra light' || s === 'ultralight' || s === 'ultra light' || s === 'w2') ? t('font.weight.extraLight')
+        : (s === 'light' || s === 'w3') ? t('font.weight.light')
+        : (s === 'medium' || s === 'w5') ? t('font.weight.medium')
+        : (s === 'semibold' || s === 'semi bold' || s === 'demibold' || s === 'demi bold' || s === 'w6') ? t('font.weight.semiBold')
+        : (s === 'extrabold' || s === 'extra bold' || s === 'ultrabold' || s === 'ultra bold' || s === 'w8') ? t('font.weight.extraBold')
+        : (s === 'black' || s === 'heavy' || s === 'w9') ? t('font.weight.black')
+        : s === 'thin italic' ? t('font.weight.thinItalic')
+        : (s === 'extralight italic' || s === 'extra light italic' || s === 'ultralight italic') ? t('font.weight.extraLightItalic')
+        : s === 'light italic' ? t('font.weight.lightItalic')
+        : s === 'medium italic' ? t('font.weight.mediumItalic')
+        : (s === 'semibold italic' || s === 'semi bold italic' || s === 'demibold italic') ? t('font.weight.semiBoldItalic')
+        : (s === 'extrabold italic' || s === 'extra bold italic' || s === 'ultrabold italic') ? t('font.weight.extraBoldItalic')
+        : (s === 'black italic' || s === 'heavy italic') ? t('font.weight.blackItalic')
+        : sub || null;
+    }
     function normFont(name) { return name.replace(/^@/, '').trim(); }
 
     let currentLang = 'en';
@@ -4004,7 +4026,8 @@
         }
       };
       var opP = document.querySelector('script[src*="opentype"]')?.src || 'vendor/opentype.min.js';
-      worker.postMessage({ type: 'init', id: 0, opentypePath: opP });
+      var ver = document.querySelector('meta[name="version"]')?.getAttribute('content') || '2.6';
+      worker.postMessage({ type: 'init', id: 0, opentypePath: opP, version: ver });
     }
 
     function workerCall(type, data, transfer) {
@@ -4221,7 +4244,7 @@
       const dzAss = document.getElementById('dz-ass');
       const badge = document.getElementById('ass-badge');
       const fileErrors = [];
-      for (const f of Array.from(files)) {
+      for (const f of files) {
         if (f.size > FILE_SIZE_LIMIT) {
           fileErrors.push({ name: f.name, key: 'err.file_too_large' });
           continue;
@@ -4237,7 +4260,7 @@
             const key = e.message;
             fileErrors.push({
               name: f.name,
-              key: key === 'err.zip_depth' ? 'err.zip_depth' : 'err.zip_corrupt',
+              key: key === 'err.zip_depth' ? key : 'err.zip_corrupt',
               params: key === 'err.zip_depth' ? { limit: ZIP_MAX_DEPTH } : null
             });
           }
@@ -4306,12 +4329,12 @@
       };
       renderAssBadge();
 
-      document.getElementById('step1').classList.remove('active');
-      document.getElementById('step1').classList.add('done');
-      document.getElementById('step2').style.display = '';
-      document.getElementById('step2').classList.add('active');
-      document.getElementById('step3').style.display = 'none';
-      document.getElementById('step3').classList.remove('active');
+      const _s1 = document.getElementById('step1');
+      _s1.classList.remove('active'); _s1.classList.add('done');
+      const _s2 = document.getElementById('step2');
+      _s2.style.display = ''; _s2.classList.add('active');
+      const _s3 = document.getElementById('step3');
+      _s3.style.display = 'none'; _s3.classList.remove('active');
       document.getElementById('step4').style.display = 'none';
 
       const area = document.getElementById('analysis-area');
@@ -4876,7 +4899,7 @@
       const allFonts = {};
       const wantFont = document.getElementById('opt-font').checked;
       const wantSys = document.getElementById('opt-sysfont').checked;
-      const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
+      const wantMultiWeight = !!document.getElementById('opt-multiweight')?.checked;
       const canonicalToRand = new Map();
       for (const entry of S.assFiles) {
         if (entry.parsed.randFontMap) {
@@ -5015,27 +5038,7 @@
           if (uploadedRecord) {
             const fname = document.createElement('span');
             fname.className = 'fi-fname';
-            const rawSub = uploadedRecord.subfamilyName || '';
-            const subLow = rawSub.toLowerCase();
-            const i18nSub = (subLow === 'bold italic' || subLow === 'bolditalic') ? t('font.weight.boldItalic')
-              : (subLow === 'bold') ? t('font.weight.bold')
-              : (subLow === 'italic' || subLow === 'oblique') ? t('font.weight.italic')
-              : (subLow === 'regular' || subLow === 'normal' || subLow === '') ? t('font.weight.normal')
-              : (subLow === 'thin' || subLow === 'hairline' || subLow === 'w1') ? t('font.weight.thin')
-              : (subLow === 'extralight' || subLow === 'extra light' || subLow === 'ultralight' || subLow === 'ultra light' || subLow === 'w2') ? t('font.weight.extraLight')
-              : (subLow === 'light' || subLow === 'w3') ? t('font.weight.light')
-              : (subLow === 'medium' || subLow === 'w5') ? t('font.weight.medium')
-              : (subLow === 'semibold' || subLow === 'semi bold' || subLow === 'demibold' || subLow === 'demi bold' || subLow === 'w6') ? t('font.weight.semiBold')
-              : (subLow === 'extrabold' || subLow === 'extra bold' || subLow === 'ultrabold' || subLow === 'ultra bold' || subLow === 'w8') ? t('font.weight.extraBold')
-              : (subLow === 'black' || subLow === 'heavy' || subLow === 'w9') ? t('font.weight.black')
-              : (subLow === 'thin italic') ? t('font.weight.thinItalic')
-              : (subLow === 'extralight italic' || subLow === 'extra light italic' || subLow === 'ultralight italic') ? t('font.weight.extraLightItalic')
-              : (subLow === 'light italic') ? t('font.weight.lightItalic')
-              : (subLow === 'medium italic') ? t('font.weight.mediumItalic')
-              : (subLow === 'semibold italic' || subLow === 'semi bold italic' || subLow === 'demibold italic') ? t('font.weight.semiBoldItalic')
-              : (subLow === 'extrabold italic' || subLow === 'extra bold italic' || subLow === 'ultrabold italic') ? t('font.weight.extraBoldItalic')
-              : (subLow === 'black italic' || subLow === 'heavy italic') ? t('font.weight.blackItalic')
-              : rawSub;
+            const i18nSub = subfamilyI18n(uploadedRecord.subfamilyName);
             const sub = i18nSub ? ' [' + i18nSub + ']' : '';
             const prefix = ws.label ? '' : '✓ ';
             fname.textContent = prefix + uploadedRecord.file.name + sub;
@@ -5148,7 +5151,7 @@
       const FILE_SIZE_LIMIT_FONT = 2 * 1024 * 1024 * 1024;
       const fontEntries = [];
       const errors = [];
-      for (const f of Array.from(files)) {
+      for (const f of files) {
         if (f.size > FILE_SIZE_LIMIT_FONT) {
           errors.push({ name: f.name, key: 'err.file_too_large' });
           continue;
@@ -5161,7 +5164,7 @@
             const key = e.message;
             errors.push({
               name: f.name,
-              key: key === 'err.zip_depth' ? 'err.zip_depth' : 'err.zip_corrupt',
+              key: key === 'err.zip_depth' ? key : 'err.zip_corrupt',
               params: key === 'err.zip_depth' ? { limit: ZIP_MAX_DEPTH } : null
             });
           }
@@ -5209,7 +5212,7 @@
           const result = await workerCall('matchFont', { buffer: entry.buffer, requiredFonts: reqArr });
           if (result.results && result.results.length > 0) {
             const matchNames = result.results.map(r => r.matchedFor).join(', ');
-            const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
+            const wantMultiWeight = !!document.getElementById('opt-multiweight')?.checked;
             for (const match of result.results) {
               const _randCanon = randToCanonical.get(match.matchedFor.toLowerCase());
               if (_randCanon) match.matchedFor = _randCanon;
@@ -5224,20 +5227,13 @@
                 size: entry.file.size || entry.buffer.byteLength,
                 allNames: match.allNames || [match.matchedFor],
               };
-              if (wantMultiWeight) {
-                const slotKey = match.isItalic && match.weight >= 600 ? 'boldItalic' : match.weight >= 600 ? 'bold' : match.isItalic ? 'italic' : 'normal';
-                const vk = nameKey + '::' + slotKey;
-                const isPendingReplace = S.pendingReplaceKeys && S.pendingReplaceKeys.has(vk);
-                if (isPendingReplace) { S.pendingReplaceKeys.delete(vk); S.uploadedFonts.set(vk, fontRecord); continue; }
-                const existing = S.uploadedFonts.get(vk);
-                if (!existing || isBetterCandidate(fontRecord, existing, match.matchedFor)) S.uploadedFonts.set(vk, fontRecord);
-              } else {
-                const vk = nameKey + '::default';
-                const isPendingReplace = S.pendingReplaceKeys && S.pendingReplaceKeys.has(vk);
-                if (isPendingReplace) { S.pendingReplaceKeys.delete(vk); S.uploadedFonts.set(vk, fontRecord); continue; }
-                const existing = S.uploadedFonts.get(vk);
-                if (!existing || isBetterCandidate(fontRecord, existing, match.matchedFor)) S.uploadedFonts.set(vk, fontRecord);
-              }
+              const slotKey = wantMultiWeight
+                ? (match.isItalic && match.weight >= 600 ? 'boldItalic' : match.weight >= 600 ? 'bold' : match.isItalic ? 'italic' : 'normal')
+                : 'default';
+              const vk = nameKey + '::' + slotKey;
+              if (S.pendingReplaceKeys.has(vk)) { S.pendingReplaceKeys.delete(vk); S.uploadedFonts.set(vk, fontRecord); continue; }
+              const existing = S.uploadedFonts.get(vk);
+              if (!existing || isBetterCandidate(fontRecord, existing, match.matchedFor)) S.uploadedFonts.set(vk, fontRecord);
             }
             itemLines.push(t('font.upload.item.ok', { name: entry.file.name, matched: matchNames }));
             matched++;
@@ -5333,38 +5329,14 @@
           else if (subfamilyLow.includes('bold')) weight = 700;
           const slotKey = isItalic && weight >= 600 ? 'boldItalic' : weight >= 600 ? 'bold' : isItalic ? 'italic' : 'normal';
           for (const matchName of matched) {
-            const vk = wantMultiWeight ? matchName + '::' + slotKey : matchName + '::default';
-            const isPendingReplace = S.pendingReplaceKeys && S.pendingReplaceKeys.has(vk);
-            const existing = S.uploadedFonts.get(vk);
-            if (!isPendingReplace && existing) {
-              if (!buffer) { const blob = await font.blob(); buffer = await blob.arrayBuffer(); }
-              const dataView = new DataView(buffer);
-              const isTTC = buffer.byteLength > 12 && dataView.getUint32(0, false) === 0x74746366;
-              const candidate = {
-                file: { name: font.fullName + ' (system)' },
-                buffer, matchedFor: matchName,
-                isTTC, ttcIndex: isTTC ? 0 : -1,
-                weight, isItalic,
-                subfamilyName: font.style || '',
-                isFamilyMatch: true, isSystem: true
-              };
-              if (isBetterCandidate(candidate, existing, matchName)) S.uploadedFonts.set(vk, candidate);
-              matchedCount++;
-              continue;
-            }
-            if (isPendingReplace) S.pendingReplaceKeys.delete(vk);
+            const vk = matchName + '::' + (wantMultiWeight ? slotKey : 'default');
+            const wasPending = S.pendingReplaceKeys.has(vk);
+            if (wasPending) S.pendingReplaceKeys.delete(vk);
             if (!buffer) { const blob = await font.blob(); buffer = await blob.arrayBuffer(); }
-            const dataView = new DataView(buffer);
-            const isTTC = buffer.byteLength > 12 && dataView.getUint32(0, false) === 0x74746366;
-            const record = {
-              file: { name: font.fullName + ' (system)' },
-              buffer, matchedFor: matchName,
-              isTTC, ttcIndex: isTTC ? 0 : -1,
-              weight, isItalic,
-              subfamilyName: font.style || '',
-              isFamilyMatch: true, isSystem: true
-            };
-            S.uploadedFonts.set(vk, record);
+            const isTTC = buffer.byteLength > 12 && new DataView(buffer).getUint32(0, false) === 0x74746366;
+            const fontRecord = { file: { name: font.fullName + ' (system)' }, buffer, matchedFor: matchName, isTTC, ttcIndex: isTTC ? 0 : -1, weight, isItalic, subfamilyName: font.style || '', isFamilyMatch: true, isSystem: true };
+            const existing = wasPending ? null : S.uploadedFonts.get(vk);
+            if (!existing || isBetterCandidate(fontRecord, existing, matchName)) S.uploadedFonts.set(vk, fontRecord);
             matchedCount++;
           }
         }
@@ -5400,8 +5372,8 @@
       const wantSystemFont = document.getElementById('opt-sysfont').checked;
       const wantStrip = document.getElementById('opt-strip').checked;
 
-      const wantMultiWeight = document.getElementById('opt-multiweight') && document.getElementById('opt-multiweight').checked;
-      const wantRandFont = document.getElementById('opt-randname') && document.getElementById('opt-randname').checked;
+      const wantMultiWeight = !!document.getElementById('opt-multiweight')?.checked;
+      const wantRandFont = !!document.getElementById('opt-randname')?.checked;
       const wantSeparate = !wantStrip && document.getElementById('opt-separate-fonts').checked;
       const fonts = Array.from(S.uploadedFonts.values()).map(info => ({
         name: info.file.name,
@@ -5785,7 +5757,7 @@
       if (!listContainer) return;
       listContainer.innerHTML = '';
       const buffers = (S.fileFontBuffers && S.fileFontBuffers[fileIdx]) || [];
-      if (!buffers || buffers.length === 0) return;
+      if (buffers.length === 0) return;
 
       const dpr = window.devicePixelRatio || 1;
       const rect = listContainer.getBoundingClientRect();
@@ -5812,7 +5784,7 @@
         dlBtn.style.fontSize = '0.75rem';
         dlBtn.dataset.idx = String(S.fileFontBuffers[fileIdx].indexOf(fb));
         dlBtn.setAttribute('aria-label', t('aria.preview_dl_font', { name: fb.name }));
-        dlBtn.textContent = typeof t === 'function' ? t('btn.download_font') : 'Download';
+        dlBtn.textContent = t('btn.download_font');
         dlBtn.onclick = () => {
           const fontIdx = parseInt(dlBtn.dataset.idx);
           const fbItem = S.fileFontBuffers[fileIdx][fontIdx];
@@ -5887,31 +5859,7 @@
             limitMsg = t('preview.total', { total: allGlyphs.length });
           }
 
-          const _multiWeightOn = !!(document.getElementById('opt-multiweight')?.checked);
-          let _finalLabel = null;
-          if (_multiWeightOn) {
-            const _rawSub = fb.subfamilyName || '';
-            const _subLow = _rawSub.toLowerCase();
-            _finalLabel = (_subLow === 'bold italic' || _subLow === 'bolditalic') ? t('font.weight.boldItalic')
-              : (_subLow === 'bold') ? t('font.weight.bold')
-              : (_subLow === 'italic' || _subLow === 'oblique') ? t('font.weight.italic')
-              : (_subLow === 'regular' || _subLow === 'normal' || _subLow === '') ? t('font.weight.normal')
-              : (_subLow === 'thin' || _subLow === 'hairline' || _subLow === 'w1') ? t('font.weight.thin')
-              : (_subLow === 'extralight' || _subLow === 'extra light' || _subLow === 'ultralight' || _subLow === 'ultra light' || _subLow === 'w2') ? t('font.weight.extraLight')
-              : (_subLow === 'light' || _subLow === 'w3') ? t('font.weight.light')
-              : (_subLow === 'medium' || _subLow === 'w5') ? t('font.weight.medium')
-              : (_subLow === 'semibold' || _subLow === 'semi bold' || _subLow === 'demibold' || _subLow === 'demi bold' || _subLow === 'w6') ? t('font.weight.semiBold')
-              : (_subLow === 'extrabold' || _subLow === 'extra bold' || _subLow === 'ultrabold' || _subLow === 'ultra bold' || _subLow === 'w8') ? t('font.weight.extraBold')
-              : (_subLow === 'black' || _subLow === 'heavy' || _subLow === 'w9') ? t('font.weight.black')
-              : (_subLow === 'thin italic') ? t('font.weight.thinItalic')
-              : (_subLow === 'extralight italic' || _subLow === 'extra light italic' || _subLow === 'ultralight italic') ? t('font.weight.extraLightItalic')
-              : (_subLow === 'light italic') ? t('font.weight.lightItalic')
-              : (_subLow === 'medium italic') ? t('font.weight.mediumItalic')
-              : (_subLow === 'semibold italic' || _subLow === 'semi bold italic' || _subLow === 'demibold italic') ? t('font.weight.semiBoldItalic')
-              : (_subLow === 'extrabold italic' || _subLow === 'extra bold italic' || _subLow === 'ultrabold italic') ? t('font.weight.extraBoldItalic')
-              : (_subLow === 'black italic' || _subLow === 'heavy italic') ? t('font.weight.blackItalic')
-              : _rawSub || t('font.weight.normal');
-          }
+          const _finalLabel = document.getElementById('opt-multiweight')?.checked ? subfamilyI18n(fb.subfamilyName) : null;
           title.textContent = fb.name + (_finalLabel ? ' [' + _finalLabel + ']' : '') + limitMsg;
 
           ctx.clearRect(0, 0, logicalW, logicalH);
@@ -6212,7 +6160,7 @@
 
       const dzFont = document.getElementById('dz-font');
       const inpFont = document.getElementById('inp-font');
-      inpFont.addEventListener('change', () => { _fontErrState = null; renderFontError(); handleFonts(Array.from(inpFont.files)); });
+      inpFont.addEventListener('change', () => { _fontErrState = null; renderFontError(); handleFonts(inpFont.files); });
       dzFont.addEventListener('dragover', e => { e.preventDefault(); dzFont.style.borderColor = 'var(--accent)'; });
       dzFont.addEventListener('dragleave', () => dzFont.style.borderColor = '');
       dzFont.addEventListener('drop', async e => {
@@ -6223,7 +6171,7 @@
             const files = await getFilesFromDataTransfer(e.dataTransfer.items, 10, ['.ttf', '.otf', '.ttc', '.otc', '.woff', '.woff2', '.zip', '.rar', '.7z', '.gz', '.bz2', '.xz', '.tar']);
             if (files.length) handleFonts(files);
           } else if (e.dataTransfer.files.length) {
-            handleFonts(Array.from(e.dataTransfer.files));
+            handleFonts(e.dataTransfer.files);
           }
         } catch (err) {
           if (err.message === 'err.folder_depth') {
@@ -6274,8 +6222,7 @@
       script.setAttribute('data-reactions-enabled', '0');
       script.setAttribute('data-emit-metadata', '0');
       script.setAttribute('data-theme', theme);
-      const langMap = { 'ar': 'ar', 'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW', 'en': 'en', 'ja': 'ja', 'ko': 'ko', 'pt-BR': 'pt-BR', 'ru': 'ru', 'es': 'es', 'tr': 'tr' };
-      script.setAttribute('data-lang', langMap[currentLang] || 'en');
+      script.setAttribute('data-lang', currentLang);
       script.crossOrigin = 'anonymous';
       script.async = true;
       script.onload = () => { const el = document.getElementById('discuss-loading'); if (el) el.remove(); };
