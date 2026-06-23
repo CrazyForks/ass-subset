@@ -1150,12 +1150,6 @@ function readFontDescriptionRaw(buffer) {
   return bestNameValue(raw.records, raw.strOff, buffer, NAME_ID_DESCRIPTION);
 }
 
-function weightScore(weight) {
-  const dist = Math.abs(weight - 400);
-  if (dist === 0) return 0;
-  if (Math.abs(weight - 500) < dist) return Math.abs(weight - 500) + 1;
-  return dist + 2;
-}
 
 function matchFontBuffer(buffer, requiredFonts, id) {
   if (buffer.byteLength < 4) return { results: [], isTTC: false };
@@ -1362,7 +1356,7 @@ function repairFontBuffer(u8) {
     }
     outView.setUint32(base + 4, cs, false);
   }
-  if (headOffset !== -1 && headOffset >= 0 && headOffset + headLength <= out.length) {
+  if (headOffset !== -1 && headOffset + headLength <= out.length) {
     out[headOffset+8] = out[headOffset+9] = out[headOffset+10] = out[headOffset+11] = 0;
     let total = 0;
     const padLen = (out.length + 3) & ~3;
@@ -2130,7 +2124,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
       }
     });
 
-    const newNamesForOpentype = Object.fromEntries(Object.entries(newNames).filter(([k]) => k !== '_aliasNames'));
+    const { _aliasNames: _an, ...newNamesForOpentype } = newNames;
     newFont.names = newNamesForOpentype;
 
     if (wantFullFont) {
@@ -2256,11 +2250,11 @@ function rewriteASS(rawContent, opts, id) {
           if (restoreDrawMap && restoreDrawMap.length > 0) {
             processed = restoreDrawingsInLine(processed, restoreDrawMap, drawFontFamily);
           }
-          if (opts.drawCharRemap && opts.drawCharRemap.size > 0) {
+          if (drawCharRemap && drawCharRemap.size > 0) {
             const rest2 = processed.replace(/^dialogue\s*:/i, '');
             const parts2 = rest2.split(',');
             const sName2 = parts2[eventFmt.styleIdx]?.trim();
-            processed = renameSubsetCharsInLine(processed, opts.drawCharRemap, drawFontFamily, subsetStyles.has(sName2), subsetStyles);
+            processed = renameSubsetCharsInLine(processed, drawCharRemap, drawFontFamily, subsetStyles.has(sName2), subsetStyles);
           }
           if (drawingDataToChar && drawingDataToChar.length > 0) {
             processed = replaceDrawingsInLine(processed, drawingDataToChar, drawFontFamily);
@@ -2355,7 +2349,7 @@ function renameSubsetCharsInLine(line, charRemap, fontFamily, initialIsSubset, s
     } else {
       if (isSubsetFont) {
         let remapped = '';
-        for (const ch of seg) remapped += charRemap.has(ch) ? charRemap.get(ch) : ch;
+        for (const ch of seg) remapped += charRemap.get(ch) ?? ch;
         result += remapped;
       } else {
         result += seg;
@@ -2664,13 +2658,9 @@ async function doConvert(data, id) {
     const slotBestMap = new Map();
     for (const slot of weightSlots) {
       if (slot.chars.length === 0) continue;
-      let best = null, bestScore = Infinity;
-      for (const c of candidates) {
-        const s = libassScore(c, slot.reqW, slot.reqI);
-        if (s < bestScore) { bestScore = s; best = c; }
-      }
+      const best = selectBestFont(candidates, slot.reqW, slot.reqI);
       if (!best) continue;
-      slotBestMap.set(slot.key, { candidate: best, slot, score: bestScore });
+      slotBestMap.set(slot.key, { candidate: best, slot, score: libassScore(best, slot.reqW, slot.reqI) });
     }
     const fileMap = new Map();
     for (const [slotKey, { candidate, slot }] of slotBestMap) {
@@ -2746,7 +2736,7 @@ async function doConvert(data, id) {
     const n = ef.name.toLowerCase();
     return [n + '_0.ttf', n + '_b0.ttf', n + '_i0.ttf', n + '_bi0.ttf'];
   }));
-  const strippedNames = [];
+  const strippedNames = new Set();
   if (parsed.embeddedFonts) {
     for (const [name, lines] of Object.entries(parsed.embeddedFonts)) {
       const slotMatch = name.match(/^(.+?)(_B0|_I0|_BI0|_0)\.ttf$/i);
@@ -2772,7 +2762,7 @@ async function doConvert(data, id) {
       if (unresolvableRandBases.has(baseNameLower)) {
         if (options.wantStrip) continue;
       } else if (options.wantStrip) {
-        if (!strippedNames.includes(baseName)) strippedNames.push(baseName);
+        strippedNames.add(baseName);
         continue;
       }
       try {
@@ -2996,7 +2986,7 @@ async function doConvert(data, id) {
       embeddedCount: finalEmbeddedFonts.length + (drawTTF ? 1 : 0),
       drawingCount: parsed.drawings,
       uniqueDrawings: parsed.uniqueDrawings.length,
-      strippedNames,
+      strippedNames: [...strippedNames],
       drawRestoreLog,
     },
     detailedDrawings: options.wantDraw ? Array.from(parsed.uniqueDrawings.values()).map(d => ({

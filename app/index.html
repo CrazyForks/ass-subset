@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.11">
+  <meta name="version" content="2.7.12">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -3762,16 +3762,13 @@
         el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
       });
 
-      const langAttrMap = { 'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW', en: 'en', ja: 'ja', ko: 'ko', ar: 'ar', ru: 'ru', tr: 'tr', 'pt-BR': 'pt-BR', es: 'es' };
-      document.documentElement.lang = langAttrMap[currentLang] || currentLang;
+      document.documentElement.lang = currentLang;
       ['zh-CN', 'zh-TW', 'en', 'ja', 'ko', 'ar', 'pt-BR', 'ru', 'es', 'tr'].forEach(l => {
         document.getElementById('lang-' + l)?.classList.toggle('active', currentLang === l);
       });
 
       const title = t('app.title');
       document.title = title;
-      document.querySelector('meta[name="description"]').setAttribute('content',
-        document.querySelector('meta[name="description"]').content);
       document.querySelector('meta[property="og:title"]')?.setAttribute('content', title);
       document.querySelector('meta[property="og:description"]')?.setAttribute('content', t('app.subtitle'));
       const manifest = document.getElementById('pwa-manifest');
@@ -4005,12 +4002,12 @@
     const pendingCallbacks = new Map();
 
     async function initWorker() {
-      var isL = window.location.protocol === 'file:';
-      if (isL && typeof runWorker === 'function') {
+      var opP = document.querySelector('script[src*="opentype"]')?.src || 'vendor/opentype.min.js';
+      var ver = document.querySelector('meta[name="version"]')?.getAttribute('content') || '2.6';
+      if (window.location.protocol === 'file:' && typeof runWorker === 'function') {
         var s = runWorker.toString();
         var b = s.slice(s.indexOf('{') + 1, s.lastIndexOf('}'));
-        var op = document.querySelector('script[src*="opentype"]')?.src || 'vendor/opentype.min.js';
-        var bl = new Blob([`const OPENTYPE_PATH='${op}';\n` + b], { type: 'application/javascript' });
+        var bl = new Blob([`const OPENTYPE_PATH='${opP}';\n` + b], { type: 'application/javascript' });
         worker = new Worker(URL.createObjectURL(bl));
       } else {
         worker = new Worker('worker.js');
@@ -4025,8 +4022,6 @@
           if (cb) { pendingCallbacks.delete(m.id); cb(m); }
         }
       };
-      var opP = document.querySelector('script[src*="opentype"]')?.src || 'vendor/opentype.min.js';
-      var ver = document.querySelector('meta[name="version"]')?.getAttribute('content') || '2.6';
       worker.postMessage({ type: 'init', id: 0, opentypePath: opP, version: ver });
     }
 
@@ -4187,9 +4182,6 @@
     }
 
     const ZIP_MAX_DEPTH = 10;
-    function classifyZipError() {
-      return 'err.zip_corrupt';
-    }
     async function processZipFile(file, type, depth = 0) {
       if (depth >= ZIP_MAX_DEPTH) throw new Error('err.zip_depth');
       let zip;
@@ -4207,7 +4199,7 @@
         }
         zip = await JSZip.loadAsync(buffer);
       } catch (e) {
-        throw new Error(classifyZipError(e));
+        throw new Error('err.zip_corrupt');
       }
       const results = [];
       for (const [name, entry] of Object.entries(zip.files)) {
@@ -4379,8 +4371,9 @@
 
     function resetUpload() {
       document.getElementById('dz-ass').style.display = '';
-      document.getElementById('ass-badge').classList.add('hidden');
-      document.getElementById('ass-badge').innerHTML = '';
+      const _badge = document.getElementById('ass-badge');
+      _badge.classList.add('hidden');
+      _badge.innerHTML = '';
       document.getElementById('step1').classList.add('active');
       document.getElementById('step1').classList.remove('done');
       document.getElementById('step2').style.display = 'none';
@@ -4499,11 +4492,11 @@
               } else {
                 displayName = base + (weightLabel ? ' [' + weightLabel + ']' : '');
               }
-              if (!embeddedDetails.some(e => e.key === k)) {
+              const _ed = embeddedDetails.find(e => e.key === k);
+              if (!_ed) {
                 embeddedDetails.push({ key: k, displayName, isMissingMap, sources: [entry.file.name] });
-              } else {
-                const existing = embeddedDetails.find(e => e.key === k);
-                if (existing && !existing.sources.includes(entry.file.name)) existing.sources.push(entry.file.name);
+              } else if (!_ed.sources.includes(entry.file.name)) {
+                _ed.sources.push(entry.file.name);
               }
             }
           });
@@ -4811,11 +4804,6 @@
         }
         document.getElementById('randname-notice').classList.toggle('hidden', !anyFont || !cbRN_init.checked);
       }
-      if (anyFont) {
-        const cbMW2 = document.getElementById('opt-multiweight');
-        if (cbMW2 && !preserveState) { cbMW2.checked = true; }
-      }
-
       if (hasFonts || hasSysFonts) renderFontList();
       const anyRandMissing = S.assFiles.some(e => e.parsed.randMapMissing);
       const anyHasRand = S.assFiles.some(e => e.parsed.hasRandFonts);
@@ -4831,8 +4819,8 @@
 
       const hasAnyEmbeddedForStep3 = S.assFiles.some(e => e.parsed.embeddedFonts && Object.keys(e.parsed.embeddedFonts).length > 0);
       if (shouldDraw || hasFonts || hasSysFonts || hasStripFonts || hasAnyEmbeddedForStep3) {
-        document.getElementById('step3').style.display = '';
-        document.getElementById('step3').classList.add('active');
+        const _s3r = document.getElementById('step3');
+        _s3r.style.display = ''; _s3r.classList.add('active');
         updateStep4Visibility();
       }
 
@@ -5077,10 +5065,7 @@
       const m = (s || '').match(/(\d+)\.(\d+)/);
       return m ? [parseInt(m[1], 10), parseInt(m[2], 10)] : [0, 0];
     }
-    function cmpVersion(a, b) {
-      if (a[0] !== b[0]) return a[0] - b[0];
-      return a[1] - b[1];
-    }
+    function cmpVersion(a, b) { return a[0] - b[0] || a[1] - b[1]; }
 
     function isBetterCandidate(newCand, oldCand, fontNameStr) {
       const fLow = fontNameStr.toLowerCase();
@@ -5745,6 +5730,11 @@
       downloadBlob(content, fn);
     }
 
+    function extractFontBuffer(fb) {
+      return (fb.buffer instanceof ArrayBuffer && fb.buffer.byteLength > 0)
+        ? fb.buffer.slice(0)
+        : (fb.buffer?.buffer instanceof ArrayBuffer ? fb.buffer.buffer.slice(0) : null);
+    }
     let lastActiveElement = null;
     function openPreview(fileIdx) {
       lastActiveElement = document.activeElement;
@@ -5756,7 +5746,7 @@
 
       if (!listContainer) return;
       listContainer.innerHTML = '';
-      const buffers = (S.fileFontBuffers && S.fileFontBuffers[fileIdx]) || [];
+      const buffers = S.fileFontBuffers[fileIdx] || [];
       if (buffers.length === 0) return;
 
       const dpr = window.devicePixelRatio || 1;
@@ -5788,9 +5778,7 @@
         dlBtn.onclick = () => {
           const fontIdx = parseInt(dlBtn.dataset.idx);
           const fbItem = S.fileFontBuffers[fileIdx][fontIdx];
-          const rawBuf = (fbItem.buffer instanceof ArrayBuffer && fbItem.buffer.byteLength > 0)
-            ? fbItem.buffer.slice(0)
-            : (fbItem.buffer && fbItem.buffer.buffer instanceof ArrayBuffer ? fbItem.buffer.buffer.slice(0) : null);
+          const rawBuf = extractFontBuffer(fbItem);
           if (!rawBuf) return;
           const wSlot = fbItem.weightSlot || 'normal';
           const nameSuffix = wSlot === 'bold' ? '_B0.ttf' : wSlot === 'italic' ? '_I0.ttf' : wSlot === 'boldItalic' ? '_BI0.ttf' : '_0.ttf';
@@ -5827,9 +5815,7 @@
         const logicalH = cssHeight;
 
         try {
-          const buf = (fb.buffer instanceof ArrayBuffer && fb.buffer.byteLength > 0)
-            ? fb.buffer.slice(0)
-            : (fb.buffer && fb.buffer.buffer instanceof ArrayBuffer ? fb.buffer.buffer.slice(0) : null);
+          const buf = extractFontBuffer(fb);
           if (!buf || buf.byteLength === 0) throw new Error('empty buffer');
           const font = opentype.parse(buf);
           const allGlyphs = [];
@@ -6110,8 +6096,8 @@
         rowAscii.classList.toggle('selected', cbAscii.checked);
       });
 
-      document.getElementById('opt-separate-fonts').addEventListener('change', () => {
-        document.getElementById('opt-row-separate').classList.toggle('selected', document.getElementById('opt-separate-fonts').checked);
+      document.getElementById('opt-separate-fonts').addEventListener('change', function() {
+        document.getElementById('opt-row-separate').classList.toggle('selected', this.checked);
         updateDownloadButtonLabel();
       });
 
@@ -6244,12 +6230,9 @@
       if (btn) btn.style.display = 'none';
     });
 
-    if (window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true) {
-      document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('btn-install-pwa');
-        if (btn) btn.style.display = 'none';
-      });
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      const btn = document.getElementById('btn-install-pwa');
+      if (btn) btn.style.display = 'none';
     }
 
     function triggerPwaInstall() {
