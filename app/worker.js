@@ -2124,7 +2124,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
       }
     });
 
-    const { _aliasNames: _an, ...newNamesForOpentype } = newNames;
+    const { _aliasNames, ...newNamesForOpentype } = newNames;
     newFont.names = newNamesForOpentype;
 
     if (wantFullFont) {
@@ -2176,7 +2176,7 @@ function applyRandFontNamesInLine(line, randFontNames) {
   return result;
 }
 function rewriteASS(rawContent, opts, id) {
-  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
+  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, activeRandMap, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
   const nl = targetNewline || '\n';
   const blocks = rawContent.split(SECTION_SPLIT_RE);
   const totalBlocks = blocks.length;
@@ -2200,8 +2200,8 @@ function rewriteASS(rawContent, opts, id) {
       for (let li = 0; li < cleanLines.length; li++) {
         if (/^\[Script Info\]/i.test(cleanLines[li].trim())) { insertAfter = li + 1; break; }
       }
-      if (opts.activeRandMap && opts.activeRandMap.length > 0 && !wantStrip) {
-        const mapLines = opts.activeRandMap.map(e => `; Font Subset: ${e.rand} - ${e.orig}`);
+      if (activeRandMap && activeRandMap.length > 0 && !wantStrip) {
+        const mapLines = activeRandMap.map(e => `; Font Subset: ${e.rand} - ${e.orig}`);
         cleanLines.splice(insertAfter, 0, ...mapLines);
       } else {
         while (insertAfter < cleanLines.length && cleanLines[insertAfter].trim() === '') {

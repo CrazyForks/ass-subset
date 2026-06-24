@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.12">
+  <meta name="version" content="2.7.13">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -3798,9 +3798,9 @@
       const btnDownload = document.getElementById('btn-download');
       if (btnDownload && !btnDownload.classList.contains('hidden')) updateDownloadButtonLabel();
 
-      if (typeof renderAssBadge === 'function') renderAssBadge();
-      if (typeof renderFontError === 'function') renderFontError();
-      if (typeof renderConvertResults === 'function') renderConvertResults();
+      renderAssBadge();
+      renderFontError();
+      renderConvertResults();
       
       if (document.getElementById('preview-modal').classList.contains('open')) {
         const previewTitle = document.getElementById('preview-title');
@@ -6028,21 +6028,23 @@
 
       const updateFontOptionsVisibility = () => {
         const anyFont = cbFont.checked || optSysFont.checked;
+        const randNameRow = document.getElementById('opt-row-randname');
+        const randNameCb = document.getElementById('opt-randname');
+        const randNotice = document.getElementById('randname-notice');
         document.getElementById('font-section').classList.toggle('hidden', !anyFont);
         document.getElementById('copyright-notice').classList.toggle('hidden', !anyFont);
         rowFullFont.classList.toggle('hidden', !anyFont);
         document.getElementById('opt-row-multiweight').classList.toggle('hidden', !anyFont);
-        document.getElementById('opt-row-randname').classList.toggle('hidden', !anyFont);
+        randNameRow.classList.toggle('hidden', !anyFont);
         if (!anyFont) {
           cbFullFont.checked = false;
           noticeFullFont.classList.add('hidden');
           document.getElementById('opt-row-fullfont').classList.remove('selected');
-          const cbMW = document.getElementById('opt-multiweight');
-          const rowMW = document.getElementById('opt-row-multiweight');
-          if (cbMW) { cbMW.checked = false; }
-          if (rowMW) { rowMW.classList.remove('selected'); }
-          const cbRN = document.getElementById('opt-randname');
-          if (cbRN) { cbRN.checked = false; document.getElementById('opt-row-randname').classList.remove('selected'); document.getElementById('randname-notice').classList.add('hidden'); }
+          cbMultiWeight.checked = false;
+          rowMultiWeight.classList.remove('selected');
+          randNameCb.checked = false;
+          randNameRow.classList.remove('selected');
+          randNotice.classList.add('hidden');
           _fontErrState = null;
           renderFontError();
         }
@@ -6064,17 +6066,15 @@
           }
           asciiRow.classList.toggle('selected', asciiCb.checked);
         }
-        const randNameRow = document.getElementById('opt-row-randname');
-        const randNameCb = document.getElementById('opt-randname');
         const randDisabled = cbFullFont.checked;
         randNameRow.classList.toggle('disabled', randDisabled);
         randNameCb.disabled = randDisabled;
         if (randDisabled) {
           randNameCb.checked = false;
           randNameRow.classList.remove('selected');
-          document.getElementById('randname-notice').classList.add('hidden');
+          randNotice.classList.add('hidden');
         } else if (anyFont) {
-          document.getElementById('randname-notice').classList.toggle('hidden', !randNameCb.checked);
+          randNotice.classList.toggle('hidden', !randNameCb.checked);
         }
         updateSeparateRow();
       };
