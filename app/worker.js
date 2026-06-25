@@ -2658,7 +2658,8 @@ async function doConvert(data, id) {
     const slotBestMap = new Map();
     for (const slot of weightSlots) {
       if (slot.chars.length === 0) continue;
-      const best = selectBestFont(candidates, slot.reqW, slot.reqI);
+      const slotCandidates = candidates.filter(c => c.slotKey === slot.key || c.slotKey === 'default' || !c.slotKey);
+      const best = selectBestFont(slotCandidates, slot.reqW, slot.reqI);
       if (!best) continue;
       slotBestMap.set(slot.key, { candidate: best, slot, score: libassScore(best, slot.reqW, slot.reqI) });
     }

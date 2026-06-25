@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.7.13">
+  <meta name="version" content="2.7.14">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -5196,8 +5196,9 @@
         try {
           const result = await workerCall('matchFont', { buffer: entry.buffer, requiredFonts: reqArr });
           if (result.results && result.results.length > 0) {
-            const matchNames = result.results.map(r => r.matchedFor).join(', ');
             const wantMultiWeight = !!document.getElementById('opt-multiweight')?.checked;
+            const slotI18n = { normal: t('font.weight.normal'), bold: t('font.weight.bold'), italic: t('font.weight.italic'), boldItalic: t('font.weight.boldItalic') };
+            const filledSlots = [];
             for (const match of result.results) {
               const _randCanon = randToCanonical.get(match.matchedFor.toLowerCase());
               if (_randCanon) match.matchedFor = _randCanon;
@@ -5216,12 +5217,18 @@
                 ? (match.isItalic && match.weight >= 600 ? 'boldItalic' : match.weight >= 600 ? 'bold' : match.isItalic ? 'italic' : 'normal')
                 : 'default';
               const vk = nameKey + '::' + slotKey;
-              if (S.pendingReplaceKeys.has(vk)) { S.pendingReplaceKeys.delete(vk); S.uploadedFonts.set(vk, fontRecord); continue; }
+              if (S.pendingReplaceKeys.has(vk)) { S.pendingReplaceKeys.delete(vk); S.uploadedFonts.set(vk, fontRecord); filledSlots.push({ name: match.matchedFor, slotKey }); continue; }
               const existing = S.uploadedFonts.get(vk);
-              if (!existing || isBetterCandidate(fontRecord, existing, match.matchedFor)) S.uploadedFonts.set(vk, fontRecord);
+              if (!existing || isBetterCandidate(fontRecord, existing, match.matchedFor)) { S.uploadedFonts.set(vk, fontRecord); filledSlots.push({ name: match.matchedFor, slotKey }); }
             }
-            itemLines.push(t('font.upload.item.ok', { name: entry.file.name, matched: matchNames }));
-            matched++;
+            if (filledSlots.length > 0) {
+              const matchDesc = filledSlots.map(s => wantMultiWeight ? `${s.name} [${slotI18n[s.slotKey]}]` : s.name).join(', ');
+              itemLines.push(t('font.upload.item.ok', { name: entry.file.name, matched: matchDesc }));
+              matched++;
+            } else {
+              itemLines.push(t('font.upload.item.skip', { name: entry.file.name }));
+              notMatched++;
+            }
           } else {
             itemLines.push(t('font.upload.item.skip', { name: entry.file.name }));
             notMatched++;
@@ -5360,7 +5367,7 @@
       const wantMultiWeight = !!document.getElementById('opt-multiweight')?.checked;
       const wantRandFont = !!document.getElementById('opt-randname')?.checked;
       const wantSeparate = !wantStrip && document.getElementById('opt-separate-fonts').checked;
-      const fonts = Array.from(S.uploadedFonts.values()).map(info => ({
+      const fonts = Array.from(S.uploadedFonts.entries()).map(([vk, info]) => ({
         name: info.file.name,
         buffer: info.buffer,
         isTTC: info.isTTC,
@@ -5370,6 +5377,7 @@
         isItalic: info.isItalic || false,
         subfamilyName: info.subfamilyName || '',
         allNames: info.allNames || [info.matchedFor],
+        slotKey: vk.split('::')[1],
       }));
 
       batchFileIdx = 0;
