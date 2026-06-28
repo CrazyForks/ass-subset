@@ -2,6 +2,7 @@
 function runWorker() {
 const DRAW_FONT_NAME = 'ASSDrawSubset';
 const PROJECT_URL = 'https://github.com/MontageSubs/ass-subset';
+let APP_VERSION = '2.7';
 const EM = 1024;
 const TARGET = 820;
 const MARGIN = (EM - TARGET) / 2;
@@ -175,7 +176,7 @@ function genRandFontName() {
 }
 function parseASSText(text, id, forceHasBOM) {
   const hasBOM = forceHasBOM || text.startsWith('\uFEFF');
-  const pureText = hasBOM ? (text.startsWith('\uFEFF') ? text.slice(1) : text) : text;
+  const pureText = text.startsWith('\uFEFF') ? text.slice(1) : text;
 
   const crlfMatches = pureText.match(/\r\n/g) || [];
   const crlfCount = crlfMatches.length;
@@ -1037,7 +1038,7 @@ function locateTableInBuffer(buffer, sfntOffset) {
 function parseFontMetaFromBuffer(buffer, sfntOffset) {
   const view = new DataView(buffer);
   const tables = locateTableInBuffer(buffer, sfntOffset);
-  return extractMetaFromTables(buffer, tables, false);
+  return extractMetaFromTables(buffer, tables);
 }
 
 function extractNamesFromRaw(buffer, records, strOff, allNames, familyNames, onVersion, onSubfamily, onDescription) {
@@ -1090,7 +1091,7 @@ function applySubfamilyFallbacks(subfamilyName, weight, isItalic, setWeight, set
   }
 }
 
-function extractMetaFromTables(buffer, tables, _unused) {
+function extractMetaFromTables(buffer, tables) {
   const view = new DataView(buffer);
   const allNames    = new Set();
   const familyNames = new Set();
@@ -1149,12 +1150,6 @@ function readFontDescriptionRaw(buffer) {
   return bestNameValue(raw.records, raw.strOff, buffer, NAME_ID_DESCRIPTION);
 }
 
-function weightScore(weight) {
-  const dist = Math.abs(weight - 400);
-  if (dist === 0) return 0;
-  if (Math.abs(weight - 500) < dist) return Math.abs(weight - 500) + 1;
-  return dist + 2;
-}
 
 function matchFontBuffer(buffer, requiredFonts, id) {
   if (buffer.byteLength < 4) return { results: [], isTTC: false };
@@ -1248,6 +1243,13 @@ function getOrigNameField(origFont, fieldName) {
   const nameTable = origFont.tables?.name;
   if (!nameTable || !nameTable[fieldName]) return null;
   return nameTable[fieldName];
+}
+function getOrigNameStr(field) {
+  if (!field) return '';
+  const enVal = field['en'];
+  if (typeof enVal === 'string' && enVal.trim()) return enVal.trim();
+  const anyVal = Object.values(field).find(v => typeof v === 'string' && v.trim());
+  return anyVal ? anyVal.trim() : '';
 }
 function buildSubsetDateString() {
   const now = new Date();
@@ -1354,7 +1356,7 @@ function repairFontBuffer(u8) {
     }
     outView.setUint32(base + 4, cs, false);
   }
-  if (headOffset !== -1 && headOffset >= 0 && headOffset + headLength <= out.length) {
+  if (headOffset !== -1 && headOffset + headLength <= out.length) {
     out[headOffset+8] = out[headOffset+9] = out[headOffset+10] = out[headOffset+11] = 0;
     let total = 0;
     const padLen = (out.length + 3) & ~3;
@@ -1399,7 +1401,7 @@ function copyExtraTables(subsetBuffer, origBuffer) {
     return null;
   };
   
-  const extraTags = [0x6670676d, 0x70726570, 0x63767420, 0x47535542, 0x47504f53];
+  const extraTags = [0x6670676d, 0x70726570, 0x63767420, 0x67617370];
   const extraTables = [];
   for (const tag of extraTags) {
     const info = findTable(orig, tag);
@@ -1582,24 +1584,10 @@ function modifyNameTable(buffer, newNames) {
     }
   }
 
-  const aliasNamesArr = newNames._aliasNames || [];
-  for (const aliasName of aliasNamesArr) {
+  for (const aliasName of (newNames._aliasNames || [])) {
     for (const nameID of [NAME_ID_MAP.fontFamily, NAME_ID_MAP.preferredFamily]) {
       for (const platformID of [3, 1]) {
-        const str = aliasName;
-        let bytes;
-        if (platformID === 3 || platformID === 0) {
-          bytes = new Uint8Array(str.length * 2);
-          const dv = new DataView(bytes.buffer);
-          for (let i = 0; i < str.length; i++) dv.setUint16(i * 2, str.charCodeAt(i), false);
-        } else {
-          const arr = [];
-          for (let i = 0; i < str.length; i++) {
-            const cp = str.charCodeAt(i);
-            arr.push(cp <= 0xFF ? cp : 0x3F);
-          }
-          bytes = new Uint8Array(arr);
-        }
+        const bytes = resolveValue({ en: aliasName }, platformID, 0);
         newRecords.push({ platformID, encodingID: platformID === 3 ? 1 : 0, languageID: platformID === 3 ? 0x0409 : 0, nameID, length: bytes.length, strOff: strPos });
         stringChunks.push(bytes);
         strPos += bytes.length;
@@ -1658,6 +1646,268 @@ function modifyNameTable(buffer, newNames) {
   outView.setUint32(nameDirOffset + 12, newNameTableSize, false);
   return out.buffer;
 }
+function binaryTTFSubset(buffer, charArray, origFont) {
+  const view = new DataView(buffer);
+  const numTables = view.getUint16(4, false);
+  const tables = {};
+  for (let i = 0; i < numTables; i++) {
+    const tag = view.getUint32(12 + i * 16, false);
+    tables[tag] = {
+      offset: view.getUint32(12 + i * 16 + 8, false),
+      length: view.getUint32(12 + i * 16 + 12, false)
+    };
+  }
+  if (!tables[0x676c7966] || !tables[0x6c6f6361] || !tables[0x6d617870] || !tables[0x68656164]) return null;
+
+  const maxpOffset = tables[0x6d617870].offset;
+  const numGlyphs = view.getUint16(maxpOffset + 4, false);
+  const headOffset = tables[0x68656164].offset;
+  const indexToLocFormat = view.getInt16(headOffset + 50, false);
+  const locaOffset = tables[0x6c6f6361].offset;
+  const getLoca = (idx) => indexToLocFormat === 0
+    ? view.getUint16(locaOffset + idx * 2, false) * 2
+    : view.getUint32(locaOffset + idx * 4, false);
+  const glyfOffset = tables[0x676c7966].offset;
+
+  const keepGlyphs = new Uint8Array(numGlyphs);
+  keepGlyphs[0] = 1;
+  for (const char of charArray) {
+    const g = origFont.charToGlyph(char);
+    if (g && g.index > 0 && g.index < numGlyphs) keepGlyphs[g.index] = 1;
+  }
+
+  const u8 = new Uint8Array(buffer);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < numGlyphs; i++) {
+      if (keepGlyphs[i] === 1) {
+        const off = getLoca(i);
+        const len = getLoca(i + 1) - off;
+        if (len > 0) {
+          const numContours = view.getInt16(glyfOffset + off, false);
+          if (numContours < 0) {
+            let pos = glyfOffset + off + 10;
+            let flags;
+            do {
+              flags = view.getUint16(pos, false);
+              const glyphIndex = view.getUint16(pos + 2, false);
+              if (glyphIndex < numGlyphs && keepGlyphs[glyphIndex] === 0) {
+                keepGlyphs[glyphIndex] = 1;
+                changed = true;
+              }
+              pos += 4;
+              if (flags & 1) pos += 4;
+              else pos += 2;
+              if (flags & 8) pos += 2;
+              else if (flags & 64) pos += 4;
+              else if (flags & 128) pos += 8;
+            } while (flags & 32);
+          }
+        }
+        keepGlyphs[i] = 2;
+      }
+    }
+  }
+
+  const newLoca = new Uint8Array((numGlyphs + 1) * 4);
+  const newLocaView = new DataView(newLoca.buffer);
+  const newGlyfChunks = [];
+  let currentOffset = 0;
+
+  for (let i = 0; i < numGlyphs; i++) {
+    newLocaView.setUint32(i * 4, currentOffset, false);
+    if (keepGlyphs[i]) {
+      const off = getLoca(i);
+      const len = getLoca(i + 1) - off;
+      if (len > 0) {
+        newGlyfChunks.push(u8.slice(glyfOffset + off, glyfOffset + off + len));
+        currentOffset += len;
+        if (currentOffset % 2 !== 0) {
+          newGlyfChunks.push(new Uint8Array([0]));
+          currentOffset++;
+        }
+      }
+    }
+  }
+  newLocaView.setUint32(numGlyphs * 4, currentOffset, false);
+
+  const newGlyf = new Uint8Array(currentOffset);
+  let ptr = 0;
+  for (const chunk of newGlyfChunks) {
+    newGlyf.set(chunk, ptr);
+    ptr += chunk.length;
+  }
+
+  const map4 = [];
+  const map12 = [];
+  for (let i = 0; i < numGlyphs; i++) {
+    if (keepGlyphs[i]) {
+      const g = origFont.glyphs.get(i);
+      if (!g) continue;
+      const ucs = (g.unicodes && g.unicodes.length) ? g.unicodes : (g.unicode !== undefined ? [g.unicode] : []);
+      for (const u of ucs) {
+        if (u <= 0xFFFF) map4.push({u, i});
+        map12.push({u, i});
+      }
+    }
+  }
+  map4.sort((a,b) => a.u - b.u);
+  map12.sort((a,b) => a.u - b.u);
+
+  const seg4 = [];
+  let cur = null;
+  for (const m of map4) {
+    if (!cur) {
+      cur = {s: m.u, e: m.u, d: (m.i - m.u + 0x10000) % 0x10000};
+    } else if (m.u === cur.e + 1 && ((m.i - m.u + 0x10000) % 0x10000) === cur.d) {
+      cur.e = m.u;
+    } else {
+      seg4.push(cur);
+      cur = {s: m.u, e: m.u, d: (m.i - m.u + 0x10000) % 0x10000};
+    }
+  }
+  if (cur) seg4.push(cur);
+  seg4.push({s: 0xFFFF, e: 0xFFFF, d: 1});
+
+  const seg12 = [];
+  cur = null;
+  for (const m of map12) {
+    if (!cur) {
+      cur = {s: m.u, e: m.u, gid: m.i};
+    } else if (m.u === cur.e + 1 && m.i === cur.gid + (m.u - cur.s)) {
+      cur.e = m.u;
+    } else {
+      seg12.push(cur);
+      cur = {s: m.u, e: m.u, gid: m.i};
+    }
+  }
+  if (cur) seg12.push(cur);
+
+  const segCount = seg4.length;
+  const searchRange4 = 2 * Math.pow(2, Math.floor(Math.log2(segCount)));
+  const entrySelector4 = Math.log2(searchRange4 / 2);
+  const rangeShift4 = 2 * segCount - searchRange4;
+  const f4Len = 16 + 8 * segCount;
+  const f12Len = 16 + 12 * seg12.length;
+  const newCmap = new Uint8Array(28 + f4Len + f12Len);
+  const cv = new DataView(newCmap.buffer);
+  
+  cv.setUint16(0, 0, false);
+  cv.setUint16(2, 2, false);
+  cv.setUint16(4, 3, false);
+  cv.setUint16(6, 1, false);
+  cv.setUint32(8, 28, false);
+  cv.setUint16(12, 3, false);
+  cv.setUint16(14, 10, false);
+  cv.setUint32(16, 28 + f4Len, false);
+
+  let o = 28;
+  cv.setUint16(o, 4, false);
+  cv.setUint16(o+2, f4Len, false);
+  cv.setUint16(o+4, 0, false);
+  cv.setUint16(o+6, segCount * 2, false);
+  cv.setUint16(o+8, searchRange4, false);
+  cv.setUint16(o+10, entrySelector4, false);
+  cv.setUint16(o+12, rangeShift4, false);
+  o += 14;
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].e, false); o+=2; }
+  cv.setUint16(o, 0, false); o+=2;
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].s, false); o+=2; }
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, seg4[i].d, false); o+=2; }
+  for (let i=0; i<segCount; i++) { cv.setUint16(o, 0, false); o+=2; }
+
+  o = 28 + f4Len;
+  cv.setUint16(o, 12, false);
+  cv.setUint16(o+2, 0, false);
+  cv.setUint32(o+4, f12Len, false);
+  cv.setUint32(o+8, 0, false);
+  cv.setUint32(o+12, seg12.length, false);
+  o += 16;
+  for (let i=0; i<seg12.length; i++) {
+    cv.setUint32(o, seg12[i].s, false);
+    cv.setUint32(o+4, seg12[i].e, false);
+    cv.setUint32(o+8, seg12[i].gid, false);
+    o += 12;
+  }
+
+  const newTables = [];
+  for (let i = 0; i < numTables; i++) {
+    const tag = view.getUint32(12 + i * 16, false);
+    if (tag === 0x676c7966) newTables.push({ tag, data: newGlyf });
+    else if (tag === 0x6c6f6361) newTables.push({ tag, data: newLoca });
+    else if (tag === 0x636d6170) newTables.push({ tag, data: newCmap });
+    else if (tag !== 0x44534947) {
+      const off = tables[tag].offset;
+      const len = tables[tag].length;
+      const data = u8.slice(off, off + len);
+      if (tag === 0x68656164) {
+        new DataView(data.buffer, data.byteOffset, data.byteLength).setInt16(50, 1, false);
+      }
+      newTables.push({ tag, data });
+    }
+  }
+
+  newTables.sort((a, b) => a.tag - b.tag);
+  const headerSize = 12 + newTables.length * 16;
+  let totalDataSize = 0;
+  for (const t of newTables) totalDataSize += (t.data.length + 3) & ~3;
+
+  const out = new Uint8Array(headerSize + totalDataSize);
+  const outView = new DataView(out.buffer);
+  outView.setUint32(0, view.getUint32(0, false), false);
+  outView.setUint16(4, newTables.length, false);
+  const searchRangeOut = Math.pow(2, Math.floor(Math.log2(newTables.length))) * 16;
+  outView.setUint16(6, searchRangeOut, false);
+  outView.setUint16(8, Math.floor(Math.log2(newTables.length)), false);
+  outView.setUint16(10, newTables.length * 16 - searchRangeOut, false);
+
+  let offset = headerSize;
+  for (let i = 0; i < newTables.length; i++) {
+    const t = newTables[i];
+    const base = 12 + i * 16;
+    outView.setUint32(base, t.tag, false);
+    outView.setUint32(base + 4, 0, false);
+    outView.setUint32(base + 8, offset, false);
+    outView.setUint32(base + 12, t.data.length, false);
+    out.set(t.data, offset);
+    offset += (t.data.length + 3) & ~3;
+  }
+  return repairFontBuffer(out);
+}
+const SHAPING_REQUIRED_SCRIPTS = [
+  [0x0600, 0x06FF], // Arabic
+  [0x0700, 0x074F], // Syriac
+  [0x0750, 0x077F], // Arabic Supplement
+  [0x0780, 0x07BF], // Thaana
+  [0x07C0, 0x07FF], // N'Ko
+  [0x0840, 0x085F], // Mandaic
+  [0x08A0, 0x08FF], // Arabic Extended-A
+  [0xFB50, 0xFDFF], // Arabic Presentation Forms-A
+  [0xFE70, 0xFEFF], // Arabic Presentation Forms-B
+  [0x0900, 0x097F], // Devanagari
+  [0x0980, 0x09FF], // Bengali
+  [0x0A00, 0x0A7F], // Gurmukhi
+  [0x0A80, 0x0AFF], // Gujarati
+  [0x0B00, 0x0B7F], // Oriya
+  [0x0B80, 0x0BFF], // Tamil
+  [0x0C00, 0x0C7F], // Telugu
+  [0x0C80, 0x0CFF], // Kannada
+  [0x0D00, 0x0D7F], // Malayalam
+  [0x0D80, 0x0DFF], // Sinhala
+  [0x0E00, 0x0E7F], // Thai
+  [0x0E80, 0x0EFF], // Lao
+  [0x0F00, 0x0FFF], // Tibetan
+  [0x1000, 0x109F], // Myanmar
+  [0x1780, 0x17FF], // Khmer
+  [0x1800, 0x18AF], // Mongolian
+];
+function requiresComplexScriptShaping(chars) {
+  return chars.some(c => {
+    const cp = c.codePointAt(0);
+    return SHAPING_REQUIRED_SCRIPTS.some(([lo, hi]) => cp >= lo && cp <= hi);
+  });
+}
 async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, ttcIndex, id, wantAscii, wantFullFont, aliasNames) {
   aliasNames = aliasNames || [];
   let orig;
@@ -1673,7 +1923,7 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   } catch (e) {
     throw new Error(`Font parse failed: ${e.message}`);
   }
-  const charSet = new Set(charArray.map(c => c));
+  const charSet = new Set(charArray);
   let fullCharArray;
   if (wantAscii !== false) {
     const asciiChars = [];
@@ -1687,82 +1937,12 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   } else {
     fullCharArray = charArray;
   }
-  let glyphs = [];
-  let skipped = 0;
-  const hintTables = ['fpgm', 'prep', 'cvt ', 'gasp', 'GSUB', 'GPOS', 'GDEF', 'hdmx', 'VDMX', 'LTSH'];
-  if (wantFullFont) {
-    for (let i = 0; i < orig.glyphs.length; i++) {
-      glyphs.push(orig.glyphs.get(i));
-    }
-  } else {
-    const origNotdef = orig.glyphs.get(0);
-    const notdef = new opentype.Glyph({
-      name: '.notdef', unicode: 0,
-      advanceWidth: origNotdef?.advanceWidth || 500,
-      path: new opentype.Path()
-    });
-    glyphs.push(notdef);
-    const seen = new Set([0]);
-    const total = fullCharArray.length;
-    for (let ci = 0; ci < total; ci++) {
-      if (ci % 500 === 0) {
-        emitProgress(id, 'subset', ci, total);
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-      const char = fullCharArray[ci];
-      const cp = char.codePointAt(0);
-      if (seen.has(cp)) continue;
-      const origGlyph = orig.charToGlyph(char);
-      if (!origGlyph || origGlyph.index === 0) { skipped++; continue; }
-      const rendered = orig.getPath(char, 0, 0, orig.unitsPerEm);
-      const newPath = new opentype.Path();
-      for (const cmd of rendered.commands) {
-        switch (cmd.type) {
-          case 'M': newPath.moveTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'L': newPath.lineTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'C': newPath.curveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x2), Math.round(-cmd.y2), Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'Q': newPath.quadraticCurveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x), Math.round(-cmd.y)); break;
-          case 'Z': newPath.close(); break;
-        }
-      }
-      glyphs.push(new opentype.Glyph({
-        name: origGlyph.name || `glyph_${cp}`,
-        unicode: cp, advanceWidth: origGlyph.advanceWidth, path: newPath
-      }));
-      seen.add(cp);
-    }
-  }
+
   const origSubfamilyField = getOrigNameField(orig, 'preferredSubfamily') || getOrigNameField(orig, 'fontSubfamily');
-  let origSubfamilyStr = '';
-  if (origSubfamilyField) {
-    const enVal = origSubfamilyField['en'];
-    if (typeof enVal === 'string' && enVal.trim()) {
-      origSubfamilyStr = enVal.trim();
-    } else {
-      const anyVal = Object.values(origSubfamilyField).find(v => typeof v === 'string' && v.trim());
-      if (anyVal) origSubfamilyStr = anyVal.trim();
-    }
-  }
+  const origSubfamilyStr = getOrigNameStr(origSubfamilyField);
   const canonicalSubfamily = isTargetBold && isTargetItalic ? 'Bold Italic' : isTargetBold ? 'Bold' : isTargetItalic ? 'Italic' : 'Regular';
   const subfamilyName = origSubfamilyStr || canonicalSubfamily;
-  const newFont = new opentype.Font({
-    familyName: fontName,
-    styleName: canonicalSubfamily,
-    unitsPerEm: orig.unitsPerEm,
-    ascender: orig.ascender,
-    descender: orig.descender,
-    glyphs
-  });
-  if (orig.tables?.os2) {
-    newFont.tables.os2 = Object.assign({}, orig.tables.os2);
-    newFont.tables.os2.usWeightClass = orig.tables.os2.usWeightClass;
-    newFont.tables.os2.fsSelection = orig.tables.os2.fsSelection;
-  }
-  hintTables.forEach(t => {
-    if (orig.tables && orig.tables[t]) {
-      newFont.tables[t] = orig.tables[t];
-    }
-  });
+
   const dateStr = buildSubsetDateString();
   const subsetSuffix = `; Subsetted via ASS Subsetter (${PROJECT_URL}) on ${dateStr}`;
   const vendorSuffix = '; MontageSubs (ASS Subsetter)';
@@ -1808,45 +1988,18 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
   const normalizedVersion = {};
   for (const lk of langKeysForFamily) normalizedVersion[lk] = firstVersionVal;
   const origCopyright = getOrigNameField(orig, 'copyright');
-  let baseCopyrightStr = '';
-  if (origCopyright) {
-    const enVal = origCopyright['en'];
-    if (typeof enVal === 'string' && enVal.trim()) {
-      baseCopyrightStr = enVal.trim();
-    } else {
-      const anyVal = Object.values(origCopyright).find(v => typeof v === 'string' && v.trim());
-      if (anyVal) baseCopyrightStr = anyVal.trim();
-    }
-  }
+  const baseCopyrightStr = getOrigNameStr(origCopyright);
   const copyrightStr = (baseCopyrightStr || 'MontageSubs') + subsetSuffix;
   const copyrightEntry = {};
   for (const lk of langKeysForFamily) copyrightEntry[lk] = copyrightStr;
   const origDesigner = getOrigNameField(orig, 'designer');
-  let baseDesignerStr = '';
-  if (origDesigner) {
-    const enVal = origDesigner['en'];
-    if (typeof enVal === 'string' && enVal.trim()) {
-      baseDesignerStr = enVal.trim();
-    } else {
-      const anyVal = Object.values(origDesigner).find(v => typeof v === 'string' && v.trim());
-      if (anyVal) baseDesignerStr = anyVal.trim();
-    }
-  }
+  const baseDesignerStr = getOrigNameStr(origDesigner);
   const designerStr = (baseDesignerStr || 'MontageSubs (ASS Subsetter)') + vendorSuffix;
   const designerEntry = {};
   for (const lk of langKeysForFamily) designerEntry[lk] = designerStr;
 
   const origRealManufacturer = getOrigNameField(orig, 'manufacturer');
-  let baseRealManufacturerStr = '';
-  if (origRealManufacturer) {
-    const enVal = origRealManufacturer['en'];
-    if (typeof enVal === 'string' && enVal.trim()) {
-      baseRealManufacturerStr = enVal.trim();
-    } else {
-      const anyVal = Object.values(origRealManufacturer).find(v => typeof v === 'string' && v.trim());
-      if (anyVal) baseRealManufacturerStr = anyVal.trim();
-    }
-  }
+  const baseRealManufacturerStr = getOrigNameStr(origRealManufacturer);
 
   const realManufacturerStr = baseRealManufacturerStr ? (baseRealManufacturerStr + '; MontageSubs') : 'MontageSubs';
   const realManufacturerEntry = {};
@@ -1893,17 +2046,96 @@ async function subsetFont(fontBuffer, charArray, fontName, isTTC, targetWeight, 
     }
     if (Object.keys(newNames.licenseURL).length === 0) delete newNames.licenseURL;
   }
-  const newNamesForOpentype = Object.fromEntries(Object.entries(newNames).filter(([k]) => k !== '_aliasNames'));
-  newFont.names = newNamesForOpentype;
+
+  const baseBuffer = isTTC && ttcIndex !== undefined && ttcIndex !== -1 ? extractTTFFromTTC(fontBuffer, ttcIndex) : fontBuffer;
   let rawTTF;
-  if (wantFullFont) {
-    const baseBuffer = isTTC && ttcIndex !== undefined && ttcIndex !== -1 ? extractTTFFromTTC(fontBuffer, ttcIndex) : fontBuffer;
-    rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
-  } else {
-    const baseTTF = new Uint8Array(newFont.toArrayBuffer());
-    rawTTF = aliasNames.length > 0
-      ? repairFontBuffer(new Uint8Array(modifyNameTable(baseTTF.buffer, newNames)))
-      : repairFontBuffer(baseTTF);
+  let skipped = 0;
+
+  if (orig.outlinesFormat === 'truetype') {
+    if (!wantFullFont) {
+      const sparseTTF = binaryTTFSubset(baseBuffer, fullCharArray, orig);
+      if (sparseTTF) {
+        rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(sparseTTF.buffer, newNames)));
+      }
+    } else {
+      rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
+    }
+  }
+
+  if (!rawTTF) {
+    let glyphs = [];
+    const hintTables = ['gasp', 'cpal'];
+    if (wantFullFont) {
+      for (let i = 0; i < orig.glyphs.length; i++) {
+        glyphs.push(orig.glyphs.get(i));
+      }
+    } else {
+      const origNotdef = orig.glyphs.get(0);
+      const notdef = new opentype.Glyph({
+        name: '.notdef', unicode: 0,
+        advanceWidth: origNotdef?.advanceWidth || 500,
+        path: new opentype.Path()
+      });
+      glyphs.push(notdef);
+      const seen = new Set([0]);
+      const total = fullCharArray.length;
+      for (let ci = 0; ci < total; ci++) {
+        if (ci % 500 === 0) {
+          emitProgress(id, 'subset', ci, total);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const char = fullCharArray[ci];
+        const cp = char.codePointAt(0);
+        if (seen.has(cp)) continue;
+        const origGlyph = orig.charToGlyph(char);
+        if (!origGlyph || origGlyph.index === 0) { skipped++; continue; }
+        const rendered = orig.getPath(char, 0, 0, orig.unitsPerEm);
+        const newPath = new opentype.Path();
+        for (const cmd of rendered.commands) {
+          switch (cmd.type) {
+            case 'M': newPath.moveTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'L': newPath.lineTo(Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'C': newPath.curveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x2), Math.round(-cmd.y2), Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'Q': newPath.quadraticCurveTo(Math.round(cmd.x1), Math.round(-cmd.y1), Math.round(cmd.x), Math.round(-cmd.y)); break;
+            case 'Z': newPath.close(); break;
+          }
+        }
+        glyphs.push(new opentype.Glyph({
+          name: origGlyph.name || `glyph_${cp}`,
+          unicode: cp, advanceWidth: origGlyph.advanceWidth, path: newPath
+        }));
+        seen.add(cp);
+      }
+    }
+    const newFont = new opentype.Font({
+      familyName: fontName,
+      styleName: canonicalSubfamily,
+      unitsPerEm: orig.unitsPerEm,
+      ascender: orig.ascender,
+      descender: orig.descender,
+      glyphs
+    });
+    if (orig.tables?.os2) {
+      newFont.tables.os2 = Object.assign({}, orig.tables.os2);
+    }
+    hintTables.forEach(t => {
+      if (orig.tables && orig.tables[t]) {
+        newFont.tables[t] = orig.tables[t];
+      }
+    });
+
+    const { _aliasNames, ...newNamesForOpentype } = newNames;
+    newFont.names = newNamesForOpentype;
+
+    if (wantFullFont) {
+      rawTTF = repairFontBuffer(new Uint8Array(modifyNameTable(baseBuffer, newNames)));
+    } else {
+      const baseTTF = new Uint8Array(newFont.toArrayBuffer());
+      rawTTF = aliasNames.length > 0
+        ? repairFontBuffer(new Uint8Array(modifyNameTable(baseTTF.buffer, newNames)))
+        : repairFontBuffer(baseTTF);
+      rawTTF = repairFontBuffer(copyExtraTables(rawTTF, baseBuffer));
+    }
   }
 
   return {
@@ -1944,7 +2176,7 @@ function applyRandFontNamesInLine(line, randFontNames) {
   return result;
 }
 function rewriteASS(rawContent, opts, id) {
-  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
+  const { drawingDataToChar, drawFontFamily, drawTTF, embeddedFonts, drawCharRemap, targetNewline, randFontNames, activeRandMap, wantStrip, wantEmbed, retainRawFonts, restoreDrawMap, retainDrawFont } = opts;
   const nl = targetNewline || '\n';
   const blocks = rawContent.split(SECTION_SPLIT_RE);
   const totalBlocks = blocks.length;
@@ -1960,9 +2192,7 @@ function rewriteASS(rawContent, opts, id) {
     const trimmed = block.trim();
     if (!trimmed) continue;
     const header = (trimmed.match(/^\[([^\]]+)\]/i)?.[1] || '').toLowerCase();
-    if (header === 'fonts') {
-      if (!wantEmbed || !embeddedFonts || embeddedFonts.length === 0) continue;
-    }
+    if (header === 'fonts') continue;
     if (header === 'script info') {
       const lines = block.split(/\r?\n/);
       const cleanLines = lines.filter(l => !/^;\s*Font Subset:/i.test(l.trim()));
@@ -1970,8 +2200,8 @@ function rewriteASS(rawContent, opts, id) {
       for (let li = 0; li < cleanLines.length; li++) {
         if (/^\[Script Info\]/i.test(cleanLines[li].trim())) { insertAfter = li + 1; break; }
       }
-      if (opts.activeRandMap && opts.activeRandMap.length > 0 && !wantStrip) {
-        const mapLines = opts.activeRandMap.map(e => `; Font Subset: ${e.rand} - ${e.orig}`);
+      if (activeRandMap && activeRandMap.length > 0 && !wantStrip) {
+        const mapLines = activeRandMap.map(e => `; Font Subset: ${e.rand} - ${e.orig}`);
         cleanLines.splice(insertAfter, 0, ...mapLines);
       } else {
         while (insertAfter < cleanLines.length && cleanLines[insertAfter].trim() === '') {
@@ -2020,11 +2250,11 @@ function rewriteASS(rawContent, opts, id) {
           if (restoreDrawMap && restoreDrawMap.length > 0) {
             processed = restoreDrawingsInLine(processed, restoreDrawMap, drawFontFamily);
           }
-          if (opts.drawCharRemap && opts.drawCharRemap.size > 0) {
+          if (drawCharRemap && drawCharRemap.size > 0) {
             const rest2 = processed.replace(/^dialogue\s*:/i, '');
             const parts2 = rest2.split(',');
             const sName2 = parts2[eventFmt.styleIdx]?.trim();
-            processed = renameSubsetCharsInLine(processed, opts.drawCharRemap, drawFontFamily, subsetStyles.has(sName2), subsetStyles);
+            processed = renameSubsetCharsInLine(processed, drawCharRemap, drawFontFamily, subsetStyles.has(sName2), subsetStyles);
           }
           if (drawingDataToChar && drawingDataToChar.length > 0) {
             processed = replaceDrawingsInLine(processed, drawingDataToChar, drawFontFamily);
@@ -2045,14 +2275,14 @@ function rewriteASS(rawContent, opts, id) {
 
   let finalSec = null;
   const hasRetainFonts = retainRawFonts && retainRawFonts.length > 0;
+  const newFontLines = ['[Fonts]'];
+  const encodeAndAppend = (embName, ttfData) => {
+    newFontLines.push(`fontname: ${embName}`);
+    const enc = assUUEncode(ttfData);
+    for (let j = 0; j < enc.length; j += 80) newFontLines.push(enc.slice(j, j + 80));
+    newFontLines.push('');
+  };
   if (!wantStrip && wantEmbed !== false && (drawTTF || (embeddedFonts && embeddedFonts.length > 0))) {
-    const newFontLines = ['[Fonts]'];
-    const encodeAndAppend = (embName, ttfData) => {
-      newFontLines.push(`fontname: ${embName}`);
-      const enc = assUUEncode(ttfData);
-      for (let j = 0; j < enc.length; j += 80) newFontLines.push(enc.slice(j, j + 80));
-      newFontLines.push('');
-    };
     if (drawTTF) encodeAndAppend(drawFontFamily + '_0.ttf', drawTTF);
     if (embeddedFonts && embeddedFonts.length > 0) {
       embeddedFonts.forEach(ef => {
@@ -2063,13 +2293,7 @@ function rewriteASS(rawContent, opts, id) {
     }
     finalSec = newFontLines.join(nl);
   } else if (wantStrip && (hasRetainFonts || retainDrawFont)) {
-    const newFontLines = ['[Fonts]'];
-    const encodeAndAppend = (embName, ttfData) => {
-      newFontLines.push(`fontname: ${embName}`);
-      const enc = assUUEncode(ttfData);
-      for (let j = 0; j < enc.length; j += 80) newFontLines.push(enc.slice(j, j + 80));
-      newFontLines.push('');
-    };
+
     if (retainDrawFont) {
       if (retainDrawFont.ttfU8) {
         encodeAndAppend(retainDrawFont.name, retainDrawFont.ttfU8);
@@ -2125,7 +2349,7 @@ function renameSubsetCharsInLine(line, charRemap, fontFamily, initialIsSubset, s
     } else {
       if (isSubsetFont) {
         let remapped = '';
-        for (const ch of seg) remapped += charRemap.has(ch) ? charRemap.get(ch) : ch;
+        for (const ch of seg) remapped += charRemap.get(ch) ?? ch;
         result += remapped;
       } else {
         result += seg;
@@ -2301,16 +2525,12 @@ async function doConvert(data, id) {
     drawTTF = new Uint8Array(parsed.existingSubsetFontBuffer);
   }
 
-  function libassWeightScore(fontWeight, requestedWeight) {
-    return Math.abs(fontWeight - requestedWeight);
-  }
+  const libassScore = (c, reqW, reqI) => Math.abs((c.weight || 400) - reqW) + (!!c.isItalic === !!reqI ? 0 : 10000);
   function selectBestFont(candidates, requestedWeight, requestedItalic) {
     let best = null, bestScore = Infinity;
     for (const c of candidates) {
-      const wScore = libassWeightScore(c.weight || 400, requestedWeight);
-      const iScore = (!!c.isItalic === !!requestedItalic) ? 0 : 10000;
-      const score = wScore + iScore;
-      if (score < bestScore) { bestScore = score; best = c; }
+      const s = libassScore(c, requestedWeight, requestedItalic);
+      if (s < bestScore) { bestScore = s; best = c; }
     }
     return best;
   }
@@ -2420,7 +2640,7 @@ async function doConvert(data, id) {
       if (!best) return;
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: 'normal', chars: allChars.length });
       try {
-        const result = await subsetFont(best.buffer, allChars, fontNameStr, best.isTTC, 'normal', best.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
+        const result = await subsetFont(best.buffer, allChars, fontNameStr, best.isTTC, 'normal', best.ttcIndex, id, options.wantAscii, options.wantFullFont || requiresComplexScriptShaping(allChars), aliasNames);
         embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: best.weight, weightSlot: 'normal', subfamilyName: best.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: 'normal', origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
@@ -2435,17 +2655,13 @@ async function doConvert(data, id) {
       { key: 'boldItalic', chars: mergedCharInfo.boldItalic || [], reqW: 700, reqI: true  },
     ];
     const fileKeyFor = (c) => (c.file?.name || c.name || '') + '::' + (c.ttcIndex ?? -1);
-    const libassScore = (c, reqW, reqI) => Math.abs((c.weight || 400) - reqW) + (!!c.isItalic === !!reqI ? 0 : 10000);
     const slotBestMap = new Map();
     for (const slot of weightSlots) {
       if (slot.chars.length === 0) continue;
-      let best = null, bestScore = Infinity;
-      for (const c of candidates) {
-        const s = libassScore(c, slot.reqW, slot.reqI);
-        if (s < bestScore) { bestScore = s; best = c; }
-      }
+      const slotCandidates = candidates.filter(c => c.slotKey === slot.key || c.slotKey === 'default' || !c.slotKey);
+      const best = selectBestFont(slotCandidates, slot.reqW, slot.reqI);
       if (!best) continue;
-      slotBestMap.set(slot.key, { candidate: best, slot, score: bestScore });
+      slotBestMap.set(slot.key, { candidate: best, slot, score: libassScore(best, slot.reqW, slot.reqI) });
     }
     const fileMap = new Map();
     for (const [slotKey, { candidate, slot }] of slotBestMap) {
@@ -2486,7 +2702,7 @@ async function doConvert(data, id) {
       const wLabel = primarySlot.key;
       emitLog(id, 'log.font.subsetting', 'info', { name: fontNameStr, weight: wLabel, chars: mergedChars.length });
       try {
-        const result = await subsetFont(candidate.buffer, mergedChars, fontNameStr, candidate.isTTC, primarySlot.key, candidate.ttcIndex, id, options.wantAscii, options.wantFullFont, aliasNames);
+        const result = await subsetFont(candidate.buffer, mergedChars, fontNameStr, candidate.isTTC, primarySlot.key, candidate.ttcIndex, id, options.wantAscii, options.wantFullFont || requiresComplexScriptShaping(mergedChars), aliasNames);
         embeddedFonts.push({ name: fontNameStr, ttf: result.ttf, usedChars: result.usedChars, weight: candidate.weight, weightSlot: primarySlot.key, subfamilyName: candidate.subfamilyName || '', aliasNames });
         emitLog(id, 'log.font.subset_done', 'ok', { name: fontNameStr, weight: wLabel, origKB: (result.origSize / 1024).toFixed(0), newKB: (result.ttf.length / 1024).toFixed(0), pct: ((1 - result.ttf.length / result.origSize) * 100).toFixed(0), skipped: result.skipped });
       } catch (e) {
@@ -2516,17 +2732,12 @@ async function doConvert(data, id) {
     for (const fontName of Object.keys(parsed.systemFontsReferenced))
       await subsetFontGroup(parsed.systemFontsReferenced[fontName], fontName);
   }
-  const finalEmbeddedFonts = [];
-  const processedNames = new Set();
-  const strippedNames = [];
-  embeddedFonts.forEach(ef => {
-    finalEmbeddedFonts.push(ef);
+  const finalEmbeddedFonts = [...embeddedFonts];
+  const processedNames = new Set(embeddedFonts.flatMap(ef => {
     const n = ef.name.toLowerCase();
-    processedNames.add(n + '_0.ttf');
-    processedNames.add(n + '_b0.ttf');
-    processedNames.add(n + '_i0.ttf');
-    processedNames.add(n + '_bi0.ttf');
-  });
+    return [n + '_0.ttf', n + '_b0.ttf', n + '_i0.ttf', n + '_bi0.ttf'];
+  }));
+  const strippedNames = new Set();
   if (parsed.embeddedFonts) {
     for (const [name, lines] of Object.entries(parsed.embeddedFonts)) {
       const slotMatch = name.match(/^(.+?)(_B0|_I0|_BI0|_0)\.ttf$/i);
@@ -2552,7 +2763,7 @@ async function doConvert(data, id) {
       if (unresolvableRandBases.has(baseNameLower)) {
         if (options.wantStrip) continue;
       } else if (options.wantStrip) {
-        if (!strippedNames.includes(baseName)) strippedNames.push(baseName);
+        strippedNames.add(baseName);
         continue;
       }
       try {
@@ -2590,6 +2801,17 @@ async function doConvert(data, id) {
         const residualTtf = buildResidualDrawFont(buf.buffer, nonRestorable, parsed.originalDrawFontName || DRAW_FONT_NAME);
         if (residualTtf) retainDrawFont = { name, ttfU8: residualTtf };
       }
+      const restoredCount = restorable.length;
+      const retainedCount = nonRestorable.length;
+      if (restoredCount === 0 && retainedCount === 0 && refCharsSet.size === 0) {
+        drawStripResult._log = { type: 'orphan_purge', name };
+      } else if (restoredCount > 0 && retainedCount === 0) {
+        drawStripResult._log = { type: 'full', name, restoredCount };
+      } else if (restoredCount > 0 && retainedCount > 0) {
+        drawStripResult._log = { type: 'partial', name, restoredCount, retainedCount, retainedChars: nonRestorable };
+      } else if (restoredCount === 0 && retainedCount > 0) {
+        drawStripResult._log = { type: 'unrestorable', name, retainedCount, retainedChars: nonRestorable };
+      }
     }
   }
 
@@ -2598,13 +2820,7 @@ async function doConvert(data, id) {
   }
   const pureOriginalText = text.startsWith('\uFEFF') ? text.slice(1) : text;
   emitLog(id, 'log.rewrite.start', 'info', {});
-  const APP_VERSION = (function () {
-    if (typeof document !== 'undefined') {
-      const m = document.querySelector('meta[name="version"]');
-      if (m) return m.getAttribute('content') || '2.6';
-    }
-    return '2.6';
-  })();
+
   let randFontNames = null;
   let rewriteRandFontNames = null;
   const freshlySubsettedNames = new Set(embeddedFonts.flatMap(ef => {
@@ -2730,7 +2946,7 @@ async function doConvert(data, id) {
     drawFontFamily,
     drawTTF,
     embeddedFonts: finalEmbeddedFonts,
-    drawCharRemap: drawCharRemap,
+    drawCharRemap,
     targetNewline: parsed.detectedNewline,
     wantStrip: options.wantStrip,
     wantEmbed: options.wantEmbed !== false,
@@ -2747,36 +2963,9 @@ async function doConvert(data, id) {
   const newSize = new Blob([finalOutput]).size;
   const delta = newSize - origSize;
 
-  let drawRestoreLog = null;
-  if (options.wantStrip && !options.wantDraw && drawStripResult) {
-    if (!drawStripResult.hasTable) {
-      drawRestoreLog = { type: 'no_table', name: drawStripResult.name };
-    } else {
-      const { drawTable, buf } = drawStripResult;
-      const refCharsSet = new Set(parsed.subsetReferencedChars.map(r => r.char));
-      const tableCharSet = new Set(drawTable.map(e => e.char));
-      const restoredCount = drawTable.filter(e => refCharsSet.has(e.char)).length;
-      const retainedChars = [];
-      try {
-        const ef = opentype.parse(buf.buffer);
-        for (let i = 1; i < ef.glyphs.length; i++) {
-          const g = ef.glyphs.get(i);
-          if (!g || !g.unicode || g.unicode === 0) continue;
-          const ch = String.fromCodePoint(g.unicode);
-          if (refCharsSet.has(ch) && !tableCharSet.has(ch)) retainedChars.push(ch);
-        }
-      } catch (_) {}
-      if (restoredCount === 0 && retainedChars.length === 0 && refCharsSet.size === 0) {
-        drawRestoreLog = { type: 'orphan_purge', name: drawStripResult.name };
-      } else if (restoredCount > 0 && retainedChars.length === 0) {
-        drawRestoreLog = { type: 'full', name: drawStripResult.name, restoredCount };
-      } else if (restoredCount > 0 && retainedChars.length > 0) {
-        drawRestoreLog = { type: 'partial', name: drawStripResult.name, restoredCount, retainedCount: retainedChars.length, retainedChars };
-      } else if (restoredCount === 0 && retainedChars.length > 0) {
-        drawRestoreLog = { type: 'unrestorable', name: drawStripResult.name, retainedCount: retainedChars.length, retainedChars };
-      }
-    }
-  }
+  const drawRestoreLog = drawStripResult
+    ? (drawStripResult.hasTable ? (drawStripResult._log || null) : { type: 'no_table', name: drawStripResult.name })
+    : null;
 
   emitLog(id, 'log.convert.done', 'ok', {
     origKB: (origSize / 1024).toFixed(0),
@@ -2798,7 +2987,7 @@ async function doConvert(data, id) {
       embeddedCount: finalEmbeddedFonts.length + (drawTTF ? 1 : 0),
       drawingCount: parsed.drawings,
       uniqueDrawings: parsed.uniqueDrawings.length,
-      strippedNames,
+      strippedNames: [...strippedNames],
       drawRestoreLog,
     },
     detailedDrawings: options.wantDraw ? Array.from(parsed.uniqueDrawings.values()).map(d => ({
@@ -2814,6 +3003,7 @@ self.onmessage = async function (e) {
   try {
     switch (type) {
       case 'init': {
+        if (e.data.version) APP_VERSION = e.data.version;
         try {
           const path = (typeof OPENTYPE_PATH !== 'undefined') ? OPENTYPE_PATH : e.data.opentypePath;
           importScripts(path);
