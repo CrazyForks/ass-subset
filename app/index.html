@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.1">
+  <meta name="version" content="2.8.2">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -5664,11 +5664,19 @@
             const fontsSection = fontSecStart >= 0 ? rawHdr.slice(fontSecStart + 1).trimEnd() : '';
             const evtHdr = outEvtMatch ? outEvtMatch[0].trimEnd() : '[Events]';
             const evtBody = outText.slice(outEvtBodyStart);
-            const segments = evtBody.split(new RegExp('(?:^|\\n)' + SENTINEL_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\d+@@\\n?'));
+            const _sentinelRe = new RegExp('^' + SENTINEL_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)@@$');
+            const _evtBodyLines = evtBody.split(/\r?\n/);
+            const segments = Array(sortedFiles.length).fill(null).map(() => []);
+            let _curSeg = 0;
+            for (const _ln of _evtBodyLines) {
+              const _sm = _ln.match(_sentinelRe);
+              if (_sm) { _curSeg = parseInt(_sm[1]); }
+              else if (/^(Dialogue|Comment)\s*:/i.test(_ln) && !_ln.includes('@@FSEP_')) { segments[_curSeg].push(_ln); }
+            }
             for (let j = 0; j < sortedFiles.length; j++) {
               const f = sortedFiles[j];
               const isHost = !wantSeparate && j === hostSortedIdx;
-              const segLines = (segments[j] || '').split(/\r?\n/).filter(l => /^(Dialogue|Comment)\s*:/i.test(l));
+              const segLines = segments[j] || [];
               let fileText = headerPreFonts;
               if (isHost && fontsSection) fileText += detNl + detNl + fontsSection;
               fileText += detNl + detNl + evtHdr + detNl + segLines.join(detNl);
