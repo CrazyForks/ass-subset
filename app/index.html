@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.2">
+  <meta name="version" content="2.8.3">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -5593,6 +5593,9 @@
           }
 
           const SENTINEL_PREFIX = 'Comment: @@FSEP_';
+          const STYLES_BLOCK_RE = /\[(?:V?\d+(?:\.\d+)*\+?\s+Styles|Styles)\][ \t]*\r?\n[\s\S]*?(?=\r?\n\[|$)/i;
+          const EVENTS_HDR_RE = /\[Events\][ \t]*\r?\n(?:Format:[^\r\n]*\r?\n)?/i;
+          const DEFAULT_STYLES_BLOCK = '[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,40,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1';
           let combinedText = '';
           let sortedFiles = null;
           let hostSortedIdx = 0;
@@ -5604,11 +5607,17 @@
             hostSortedIdx = sortedFiles.findIndex(sf => sf._origIndex === hostOrigIdx);
             for (let j = 0; j < sortedFiles.length; j++) {
               const f = sortedFiles[j];
-              const em = f.content.match(/\[Events\][ \t]*\r?\n(?:Format:[^\r\n]*\r?\n)?/i);
+              const sm = f.content.match(STYLES_BLOCK_RE);
+              const stylesBlock = sm ? sm[0].trimEnd() : DEFAULT_STYLES_BLOCK;
+              const em = f.content.match(EVENTS_HDR_RE);
+              const evtHdrLine = em ? em[0].trimEnd() : '[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text';
               if (j === 0) {
-                combinedText = em ? f.content.slice(0, em.index + em[0].length) : f.content;
+                const headStart = sm ? sm.index : (em ? em.index : f.content.length);
+                combinedText = f.content.slice(0, headStart).trimEnd() + '\n\n';
+              } else {
+                combinedText += SENTINEL_PREFIX + j + '@@\n';
               }
-              if (j > 0) combinedText += SENTINEL_PREFIX + j + '@@\n';
+              combinedText += stylesBlock + '\n\n' + evtHdrLine + '\n';
               if (em) {
                 const dlgLines = f.content.slice(em.index + em[0].length).split(/\r?\n/).filter(l => /^(Dialogue|Comment)\s*:/i.test(l) && !l.includes('@@FSEP_'));
                 if (dlgLines.length) combinedText += dlgLines.join('\n') + '\n';
@@ -5656,32 +5665,24 @@
           if (isMulti) {
             const outText = result.finalText || combinedText;
             const detNl = outText.includes('\r\n') ? '\r\n' : '\n';
-            const outEvtMatch = outText.match(/\[Events\][ \t]*\r?\n(?:Format:[^\r\n]*\r?\n)?/i);
-            const outEvtBodyStart = outEvtMatch ? outEvtMatch.index + outEvtMatch[0].length : outText.length;
-            const rawHdr = outEvtMatch ? outText.slice(0, outEvtMatch.index) : outText;
-            const fontSecStart = rawHdr.search(/\n\[Fonts\]/i);
-            const headerPreFonts = (fontSecStart >= 0 ? rawHdr.slice(0, fontSecStart) : rawHdr).trimEnd();
-            const fontsSection = fontSecStart >= 0 ? rawHdr.slice(fontSecStart + 1).trimEnd() : '';
-            const evtHdr = outEvtMatch ? outEvtMatch[0].trimEnd() : '[Events]';
-            const evtBody = outText.slice(outEvtBodyStart);
-            const _sentinelRe = new RegExp('^' + SENTINEL_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)@@$');
-            const _evtBodyLines = evtBody.split(/\r?\n/);
-            const segments = Array(sortedFiles.length).fill(null).map(() => []);
-            let _curSeg = 0;
-            for (const _ln of _evtBodyLines) {
-              const _sm = _ln.match(_sentinelRe);
-              if (_sm) { _curSeg = parseInt(_sm[1]); }
-              else if (/^(Dialogue|Comment)\s*:/i.test(_ln) && !_ln.includes('@@FSEP_')) { segments[_curSeg].push(_ln); }
-            }
+            const SENTINEL_ESC = SENTINEL_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const chunks = outText.split(new RegExp('\\r?\\n(?=' + SENTINEL_ESC + '\\d+@@)'));
+            const fontsM = chunks[0].match(/\r?\n\[Fonts\][ \t]*\r?\n[\s\S]*?(?=\r?\n\[|$)/i);
+            const fontsSection = fontsM ? fontsM[0].replace(/^\r?\n/, '').trimEnd() : '';
+            const chunk0NoFonts = fontsM ? (chunks[0].slice(0, fontsM.index) + chunks[0].slice(fontsM.index + fontsM[0].length)) : chunks[0];
+            const sm0 = chunk0NoFonts.match(STYLES_BLOCK_RE);
+            const scriptInfoPreamble = sm0 ? chunk0NoFonts.slice(0, sm0.index).trimEnd() : '[Script Info]\nScriptType: v4.00+';
+            const insertFontsBeforeEvents = (text, fontsSec) => {
+              if (!fontsSec) return text;
+              const idx = text.search(/\r?\n\[Events\]/i);
+              return idx < 0 ? text + detNl + detNl + fontsSec : text.slice(0, idx) + detNl + detNl + fontsSec + text.slice(idx);
+            };
             for (let j = 0; j < sortedFiles.length; j++) {
               const f = sortedFiles[j];
               const isHost = !wantSeparate && j === hostSortedIdx;
-              const segLines = segments[j] || [];
-              let fileText = headerPreFonts;
-              if (isHost && fontsSection) fileText += detNl + detNl + fontsSection;
-              fileText += detNl + detNl + evtHdr + detNl + segLines.join(detNl);
-              if (segLines.length) fileText += detNl;
-              if (!isHost && wantSeparate) fileText = fileText.replace(/\r?\n\[Fonts\][\s\S]*?(?=\r?\n\[|$)/i, '');
+              const body = j === 0 ? chunk0NoFonts : chunks[j].replace(new RegExp('^' + SENTINEL_ESC + '\\d+@@\\r?\\n'), '');
+              let fileText = j === 0 ? body : (scriptInfoPreamble + detNl + detNl + body);
+              if (isHost) fileText = insertFontsBeforeEvents(fileText, fontsSection);
               const myBlob = result.isDirect ? new Blob([f.rawBuffer]) : new Blob([fileText], { type: 'text/plain;charset=utf-8' });
               const fileIndex = S.outputBlobs.length;
               S.fileFontBuffers[fileIndex] = j === hostSortedIdx ? (result.fontBuffers || []) : [];

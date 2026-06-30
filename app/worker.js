@@ -2239,7 +2239,7 @@ function rewriteASS(rawContent, opts, id) {
       });
       processedBlocks.push(newLines.join(nl));
     } else if (header === 'events') {
-      eventsIndex = processedBlocks.length;
+      if (eventsIndex === -1) eventsIndex = processedBlocks.length;
       const lines = block.split(/\r?\n/);
       const newLines = lines.map(l => {
         if (/^format\s*:/i.test(l)) {
