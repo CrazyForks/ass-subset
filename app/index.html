@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.6">
+  <meta name="version" content="2.8.7">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -302,11 +302,11 @@
     }
 
     .step.active {
-      border-color: var(--ink);
+      border-color: var(--ok);
     }
 
     .step.done {
-      border-color: var(--ok);
+      border-color: var(--ink);
     }
 
     .step-head {
@@ -476,16 +476,11 @@
       flex-shrink: 0;
     }
 
+    .grp-list { display:flex; flex-direction:column; gap:0.875rem; }
     #opt-group-mode-wrap { width:auto; padding:0.4rem 0.75rem; margin:0 0 0.5rem 0; font-size:0.8rem; align-self:flex-start; }
     #opt-group-mode-wrap.selected { border-color:var(--ink); background:var(--card); }
     #opt-group-mode { cursor:pointer; }
     #opt-group-mode-lbl { cursor:pointer; user-select:none; }
-    .grp-hint-wrap { margin:0 0 0.75rem; }
-    .grp-hint-wrap .ii-summary { padding:0.5rem 0; }
-    .grp-hint-wrap .ii-details { padding:0 0 0.5rem 1.75rem; font-size:0.78rem; color:var(--ink2); line-height:1.65; border-top:1px dashed var(--rule2); }
-    .grp-hint-wrap .ii-details p { margin:0 0 0.35em; }
-    .grp-hint-wrap .ii-details strong { color:var(--ink); }
-    .grp-list { display:flex; flex-direction:column; gap:0.875rem; }
     .grp-card { border:1px solid var(--rule); border-radius:var(--r); padding:1rem; position:relative; transition:border-color 0.15s; }
     .grp-card:hover { border-color:color-mix(in srgb, var(--accent) 40%, var(--rule)); }
     .grp-card.grp-has-files { border-color:color-mix(in srgb, var(--ok) 50%, var(--rule)); }
@@ -4499,13 +4494,10 @@
       };
       renderAssBadge();
 
-      const _s1 = document.getElementById('step1');
-      _s1.classList.remove('active'); _s1.classList.add('done');
-      const _s2 = document.getElementById('step2');
-      _s2.style.display = ''; _s2.classList.add('active');
-      const _s3 = document.getElementById('step3');
-      _s3.style.display = 'none'; _s3.classList.remove('active');
+      document.getElementById('step2').style.display = '';
+      document.getElementById('step3').style.display = 'none';
       document.getElementById('step4').style.display = 'none';
+      setActiveStep(2);
 
       const area = document.getElementById('analysis-area');
       area.innerHTML = `
@@ -4552,12 +4544,10 @@
       const _badge = document.getElementById('ass-badge');
       _badge.classList.add('hidden');
       _badge.innerHTML = '';
-      document.getElementById('step1').classList.add('active');
-      document.getElementById('step1').classList.remove('done');
       document.getElementById('step2').style.display = 'none';
-      document.getElementById('step2').classList.remove('active');
       document.getElementById('step3').style.display = 'none';
       document.getElementById('step4').style.display = 'none';
+      setActiveStep(1);
       document.getElementById('inp-ass').value = '';
       const _grpWrap = document.getElementById('grp-list-wrap');
       if (_grpWrap) _grpWrap.classList.add('hidden');
@@ -5018,7 +5008,7 @@
       const hasAnyEmbeddedForStep3 = S.assFiles.some(e => e.parsed.embeddedFonts && Object.keys(e.parsed.embeddedFonts).length > 0);
       if (shouldDraw || hasFonts || hasSysFonts || hasStripFonts || hasAnyEmbeddedForStep3) {
         const _s3r = document.getElementById('step3');
-        _s3r.style.display = ''; _s3r.classList.add('active');
+        _s3r.style.display = '';
         updateStep4Visibility();
       }
 
@@ -5072,13 +5062,7 @@
       const wantStrip = document.getElementById('opt-strip').checked;
       const step4 = document.getElementById('step4');
       const optOptimizeWrap = document.getElementById('opt-optimize-wrap');
-      if (wantDraw || wantFont || wantSys || wantStrip) {
-        step4.style.display = '';
-        step4.classList.add('active');
-      } else {
-        step4.style.display = 'none';
-        step4.classList.remove('active');
-      }
+      step4.style.display = (wantDraw || wantFont || wantSys || wantStrip) ? '' : 'none';
     }
 
     function renderFontList() {
@@ -5585,6 +5569,7 @@
       btnConvert.disabled = true;
       btnConvert.innerHTML = '<span class="spinner"></span> ' + t('btn.converting');
       S.converting = true;
+      setActiveStep(4);
       S.outputBlobs = [];
       S.fontBuffers = [];
       S.fileFontBuffers = [];
@@ -6259,6 +6244,23 @@
       }
     }
 
+    function getActiveStep() {
+      for (let i = 1; i <= 4; i++) {
+        if (document.getElementById('step' + i)?.classList.contains('active')) return i;
+      }
+      return 0;
+    }
+
+    function setActiveStep(n) {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('step' + i);
+        if (!el) continue;
+        el.classList.toggle('active', i === n);
+        el.classList.toggle('done', i < n);
+      }
+      updateStepStatus();
+    }
+
     function updateStepStatus() {
       const steps = [1, 2, 3, 4];
       steps.forEach(num => {
@@ -6425,24 +6427,18 @@
             const _btnConv = document.getElementById('btn-convert');
             if (_btnConv) { _btnConv.disabled = false; _btnConv.textContent = t('btn.convert'); }
           }
-          document.getElementById('step1').classList.remove('active');
-          document.getElementById('step1').classList.add('done');
           document.getElementById('step2').style.display = '';
-          document.getElementById('step2').classList.add('active');
           document.getElementById('step3').style.display = 'none';
-          document.getElementById('step3').classList.remove('active');
           document.getElementById('step4').style.display = 'none';
+          setActiveStep(2);
           renderAnalysis(true);
           renderFontList();
           updateSeparateRow();
         } else {
-          document.getElementById('step1').classList.add('active');
-          document.getElementById('step1').classList.remove('done');
           document.getElementById('step2').style.display = 'none';
-          document.getElementById('step2').classList.remove('active');
           document.getElementById('step3').style.display = 'none';
-          document.getElementById('step3').classList.remove('active');
           document.getElementById('step4').style.display = 'none';
+          setActiveStep(1);
           document.getElementById('result-area').innerHTML = '';
           document.getElementById('log-box').innerHTML = '';
           document.getElementById('log-box').classList.add('hidden');
@@ -6691,13 +6687,10 @@
         document.getElementById('log-box').classList.add('hidden');
         const totalFiles = S.assFiles.length;
         if (totalFiles > 0) {
-          document.getElementById('step1').classList.remove('active');
-          document.getElementById('step1').classList.add('done');
           document.getElementById('step2').style.display = '';
-          document.getElementById('step2').classList.add('active');
           document.getElementById('step3').style.display = '';
-          document.getElementById('step3').classList.remove('active');
           document.getElementById('step4').style.display = 'none';
+          setActiveStep(2);
           renderAnalysis(false);
           renderFontList();
           updateSeparateRow();
@@ -6882,6 +6875,9 @@
       document.getElementById('btn-local-font').addEventListener('click', loadLocalFonts);
 
       document.getElementById('btn-convert').addEventListener('click', doConvert);
+      document.getElementById('step3').addEventListener('change', e => {
+        if (e.target.matches('input[type=checkbox]') && getActiveStep() < 3) setActiveStep(3);
+      });
 
       document.addEventListener('click', e => {
         const wrap = document.getElementById('lang-wrap');
@@ -6969,8 +6965,8 @@
       if (el) {
         el.innerHTML =
           '<div style="padding:2rem;background:rgba(181,42,28,.08);border-left:4px solid #b52a1c;border-radius:3px;font-family:sans-serif;" role="alert">' +
-            '<p style="font-size:1rem;font-weight:600;color:#b52a1c;margin:0 0 0.75rem 0;">' + t('err.lib.title') + '</p>' +
-            '<p style="font-size:0.9rem;color:#888;line-height:1.6;margin:0;">' + t('err.lib.desc') + '</p>' +
+            '<p style="font-size:1rem;font-weight:600;color:#b52a1c;margin:0 0 0.75rem 0;" data-i18n="err.lib.title">' + t('err.lib.title') + '</p>' +
+            '<p style="font-size:0.9rem;color:#888;line-height:1.6;margin:0;" data-i18n="err.lib.desc">' + t('err.lib.desc') + '</p>' +
           '</div>';
       }
     }
