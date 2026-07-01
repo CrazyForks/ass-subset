@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.10">
+  <meta name="version" content="2.8.11">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -5698,13 +5698,13 @@
           } else {
             result = await workerCall('convert', {
               text: combinedText,
-              forceHasBOM: group.files[0].hasBOM,
+              forceHasBOM: group.files[0].hasBOM || false,
               fonts,
               fileName: isMulti ? `Group_${gi + 1}` : group.files[0].file.name,
+              detectedNewline: group.files[0].parsed?.detectedNewline || (combinedText.includes('\r\n') ? '\r\n' : '\n'),
               options: { wantDraw, wantFont, wantSystemFont, wantStrip, wantAscii: document.getElementById('opt-ascii').checked, wantFullFont: document.getElementById('opt-fullfont').checked, wantMultiWeight, wantRandFont, wantEmbed: !wantSeparate },
             });
           }
-
           if (result.fontBuffers) S.fontBuffers = S.fontBuffers.concat(result.fontBuffers);
 
           if (result.detailedDrawings && result.detailedDrawings.length > 0) {

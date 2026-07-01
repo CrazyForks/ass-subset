@@ -2476,7 +2476,7 @@ function restoreDrawingsInLine(line, dataToCharArr, drawFontFamily) {
   return result;
 }
 async function doConvert(data, id) {
-  const { text, fonts, forceHasBOM, fileName } = data;
+  const { text, fonts, forceHasBOM, fileName, detectedNewline: callerNl } = data;
   let options = data.options;
   emitLog(id, 'log.convert.start', 'info', {});
   const parsed = parseASSText(text, id, forceHasBOM);
@@ -2949,7 +2949,7 @@ async function doConvert(data, id) {
     drawTTF,
     embeddedFonts: finalEmbeddedFonts,
     drawCharRemap,
-    targetNewline: parsed.detectedNewline,
+    targetNewline: callerNl || parsed.detectedNewline || '\r\n',
     wantStrip: options.wantStrip,
     wantEmbed: options.wantEmbed !== false,
     activeRandMap: randFontNames,
