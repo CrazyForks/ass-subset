@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.4">
+  <meta name="version" content="2.8.5">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -6314,6 +6314,21 @@
 
       function updateGroupProcessState() {
         if (S.assFiles.length > 0) {
+          if (S.converted) {
+            S.outputBlobs = [];
+            S.fontBuffers = [];
+            S.fileFontBuffers = [];
+            S.converting = false;
+            S.converted = false;
+            S.downloaded = false;
+            S.pendingReplaceKeys.clear();
+            _convertResultsState = [];
+            document.getElementById('result-area').innerHTML = '';
+            document.getElementById('btn-download').classList.add('hidden');
+            document.getElementById('opt-optimize-wrap').classList.add('hidden');
+            const _btnConv = document.getElementById('btn-convert');
+            if (_btnConv) { _btnConv.disabled = false; _btnConv.textContent = t('btn.convert'); }
+          }
           document.getElementById('step1').classList.remove('active');
           document.getElementById('step1').classList.add('done');
           document.getElementById('step2').style.display = '';
