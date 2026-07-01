@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.5">
+  <meta name="version" content="2.8.6">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -480,6 +480,11 @@
     #opt-group-mode-wrap.selected { border-color:var(--ink); background:var(--card); }
     #opt-group-mode { cursor:pointer; }
     #opt-group-mode-lbl { cursor:pointer; user-select:none; }
+    .grp-hint-wrap { margin:0 0 0.75rem; }
+    .grp-hint-wrap .ii-summary { padding:0.5rem 0; }
+    .grp-hint-wrap .ii-details { padding:0 0 0.5rem 1.75rem; font-size:0.78rem; color:var(--ink2); line-height:1.65; border-top:1px dashed var(--rule2); }
+    .grp-hint-wrap .ii-details p { margin:0 0 0.35em; }
+    .grp-hint-wrap .ii-details strong { color:var(--ink); }
     .grp-list { display:flex; flex-direction:column; gap:0.875rem; }
     .grp-card { border:1px solid var(--rule); border-radius:var(--r); padding:1rem; position:relative; transition:border-color 0.15s; }
     .grp-card:hover { border-color:color-mix(in srgb, var(--accent) 40%, var(--rule)); }
@@ -1244,22 +1249,23 @@
       margin-bottom: 1rem;
     }
 
-    .font-path-hint summary {
-      font-size: 0.78rem;
-      color: var(--ink2);
-      cursor: pointer;
-      user-select: none;
+    .font-path-hint .ii-summary {
+      padding: 0.4rem 0;
     }
 
-    .font-path-hint summary:hover {
-      color: var(--ink);
+    .font-path-hint .ii-summary .ii-label {
+      font-size: 0.78rem;
+    }
+
+    .font-path-hint .ii-details {
+      border-top: 1px dashed var(--rule2);
     }
 
     .font-path-hint .paths {
       font-family: var(--mono);
       font-size: 0.72rem;
       color: var(--ink2);
-      padding: 0.5rem 0 0 1rem;
+      padding: 0.5rem 0 0;
       line-height: 1.8;
     }
 
@@ -1601,10 +1607,22 @@
         <span class="step-subtitle">.ass / .ssa</span>
       </div>
       <div class="step-body">
-        <label class="btn btn-outline" id="opt-group-mode-wrap">
-          <input type="checkbox" id="opt-group-mode">
-          <span id="opt-group-mode-lbl" data-i18n="step1.group_toggle">Enable Group Mode</span>
-        </label>
+        <div style="display:flex;flex-direction:column;gap:0;margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+            <label class="btn btn-outline" id="opt-group-mode-wrap">
+              <input type="checkbox" id="opt-group-mode" aria-describedby="grp-hint-details">
+              <span id="opt-group-mode-lbl" data-i18n="step1.group_toggle">Enable Group Mode</span>
+            </label>
+            <div class="info-item expandable font-path-hint" id="grp-hint" role="button" tabindex="0" aria-expanded="false" aria-controls="grp-hint-details" style="margin:0;">
+              <div class="ii-summary" style="padding:0.35rem 0;">
+                <span class="ii-label" data-i18n="step1.grp_hint_title">What is Group Mode?</span>
+              </div>
+            </div>
+          </div>
+          <div class="ii-details font-path-hint" id="grp-hint-details" role="region" aria-label="Group Mode explanation" style="display:none;padding-left:0;margin-top:0.5rem;">
+            <div class="paths" data-i18n="step1.grp_hint_body" style="margin:0;">Group Mode treats multiple subtitles as a single super-subtitle during processing, yielding only one processed result for fonts with the same name. It is especially suitable when muxing multiple subtitles into a single MKV file, effectively reducing font redundancy within the MKV. It can also be combined with the "Separate Subtitles and Fonts" option.</div>
+          </div>
+        </div>
         <label class="drop-zone" id="dz-ass" for="inp-ass" data-i18n-aria="aria.dz_ass" aria-label="Upload subtitle — drag and drop or click to browse">
           <div class="dz-main" data-i18n="step1.drop">Drop your subtitle here, or click to browse</div>
           <div class="dz-hint" data-i18n="step1.hint">.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion</div>
@@ -1614,8 +1632,8 @@
         <div id="ass-badge" class="hidden mt2"></div>
         <div id="grp-list-wrap" class="hidden">
           <div class="grp-list" id="grp-list"></div>
-          <button class="btn-add-grp" id="btn-add-grp" type="button">
-            <span style="font-size:15px;line-height:1;">+</span>
+          <button class="btn-add-grp" id="btn-add-grp" type="button" aria-label="Add Group">
+            <span style="font-size:15px;line-height:1;" aria-hidden="true">+</span>
             <span data-i18n="step1.add_group">Add Group</span>
           </button>
         </div>
@@ -1730,10 +1748,14 @@
           </div>
           <input type="file" id="inp-font" accept=".ttf,.otf,.ttc,.otc,.woff,.woff2,.zip" multiple class="file-input-hidden"
             data-i18n-aria="aria.dz_font" aria-label="Upload font files">
-          <details class="font-path-hint">
-            <summary data-i18n="font.path.summary">💡 Common font directories</summary>
-            <div class="paths" id="font-paths"></div>
-          </details>
+          <div class="info-item expandable font-path-hint" id="font-path-hint" role="button" tabindex="0" aria-expanded="false">
+            <div class="ii-summary">
+              <span class="ii-label" data-i18n="font.path.summary">💡 Common font directories</span>
+            </div>
+            <div class="ii-details">
+              <div class="paths" id="font-paths"></div>
+            </div>
+          </div>
           <div id="font-list"></div>
           <div id="fstype-notice" class="notice notice-warn hidden"></div>
         </div>
@@ -2011,6 +2033,11 @@
         'step1.drop': '拖拽字幕文件到此，或点击选择',
         'step1.group_toggle': '启用分组',
         'step1.add_group': '添加分组',
+        'step1.grp_hint_title': '什么是分组模式？',
+        'step1.grp_hint_body': '分组模式将多个字幕视为一个超级字幕进行处理，使同名字体只产生一次处理结果。它特别适合在单 MKV 封装多个字幕时使用，能有效减少 MKV 内的字体冗余，还可与「字幕与字体分离」等选项结合使用。',
+        'aria.grp_remove': '删除分组 {n}',
+        'aria.grp_set_target': '设为嵌入目标',
+        'aria.grp_remove_file': '从分组中移除',
         'grp.embed_target': '嵌入目标',
         'step1.hint': '支持 .ass、.ssa、zip 压缩包及文件夹拖拽上传 — 多选批量转换',
         'step1.title': '上传字幕文件',
@@ -2205,6 +2232,11 @@
         'step1.drop': '拖曳字幕檔到此，或點擊選擇',
         'step1.group_toggle': '啟用分組',
         'step1.add_group': '新增分組',
+        'step1.grp_hint_title': '什麼是分組模式？',
+        'step1.grp_hint_body': '分組模式將多個字幕視為一個超級字幕進行處理，使同名字型只產生一次處理結果。它特別適合在單一 MKV 封裝多個字幕時使用，能有效減少 MKV 內的字型冗餘，還可與「字幕與字型分離」等選項結合使用。',
+        'aria.grp_remove': '刪除分組 {n}',
+        'aria.grp_set_target': '設為嵌入目標',
+        'aria.grp_remove_file': '從分組移除',
         'grp.embed_target': '嵌入目標',
         'step1.hint': '支援 .ass、.ssa、zip 壓縮包及資料夾拖曳上傳 — 多選批量轉換',
         'step1.title': '上傳字幕檔',
@@ -2399,6 +2431,11 @@
         'step1.drop': 'Drop your subtitle here, or click to browse',
         'step1.group_toggle': 'Enable Group Mode',
         'step1.add_group': 'Add Group',
+        'step1.grp_hint_title': 'What is Group Mode?',
+        'step1.grp_hint_body': 'Group Mode treats multiple subtitles as a single super-subtitle during processing, yielding only one processed result for fonts with the same name. It is especially suitable when muxing multiple subtitles into a single MKV file, effectively reducing font redundancy within the MKV. It can also be combined with the "Separate Subtitles and Fonts" option.',
+        'aria.grp_remove': 'Remove Group {n}',
+        'aria.grp_set_target': 'Set as embed target',
+        'aria.grp_remove_file': 'Remove from group',
         'grp.embed_target': 'Embed Target',
         'step1.hint': '.ass and .ssa files, ZIP archives, and folder drag-and-drop supported — multi-select for batch conversion',
         'step1.title': 'Upload Subtitle',
@@ -2591,8 +2628,13 @@
         'step.active': '（進行中）',
         'step.done': '（完了）',
         'step1.drop': 'スクリプトをここにドロップ、またはクリックして選択',
-        'step1.group_toggle': 'グループモードを有効にする',
+        'step1.group_toggle': 'グループモードを有効化',
         'step1.add_group': 'グループを追加',
+        'step1.grp_hint_title': 'グループモードとは？',
+        'step1.grp_hint_body': 'グループモードは複数の字幕を1つのスーパー字幕として処理するため、同名のフォントは1度だけ処理された結果を生成します。単一のMKVファイルに複数の字幕をマルチプレクス（多重化）する際に特に適しており、MKV内のフォントの冗長性を効果的に削減します。「字幕とフォントを分離」オプションと組み合わせて使用することも可能です。',
+        'aria.grp_remove': 'グループ {n} を削除',
+        'aria.grp_set_target': '埋込みターゲットに設定',
+        'aria.grp_remove_file': 'グループから削除',
         'grp.embed_target': '埋め込み対象',
         'step1.hint': '.ass、.ssa、.zip、フォルダのドラッグアンドドロップに対応 — 複数選択でバッチ変換',
         'step1.title': 'スクリプトをアップロード',
@@ -2787,6 +2829,11 @@
         'step1.drop': '스크립트를 여기에 드래그하거나 클릭하여 선택',
         'step1.group_toggle': '그룹 모드 활성화',
         'step1.add_group': '그룹 추가',
+        'step1.grp_hint_title': '그룹 모드란 무엇인가요?',
+        'step1.grp_hint_body': '그룹 모드는 여러 자막을 하나의 단일 슈퍼 자막으로 취급하여 처리하므로, 동일한 이름의 글꼴은 한 번만 처리된 결과물을 생성합니다. 단일 MKV 파일에 여러 자막을 다중화(Muxing)할 때 특히 적합하며, MKV 내 글꼴 중복을 효과적으로 줄여줍니다. "자막과 글꼴 분리" 옵션과 결합하여 사용할 수도 있습니다.',
+        'aria.grp_remove': '그룹 {n} 제거',
+        'aria.grp_set_target': '임베드 대상으로 설정',
+        'aria.grp_remove_file': '그룹에서 제거',
         'grp.embed_target': '임베드 대상',
         'step1.hint': '.ass, .ssa, .zip 및 폴더 드래그 앤 드롭 지원 — 다중 선택으로 일괄 변환',
         'step1.title': '자막 스크립트 업로드',
@@ -2979,8 +3026,13 @@
         'step.active': '(en progreso)',
         'step.done': '(completado)',
         'step1.drop': 'Suelta tu subtítulo aquí, o haz clic para seleccionar',
-        'step1.group_toggle': 'Habilitar modo de grupo',
-        'step1.add_group': 'Agregar grupo',
+        'step1.group_toggle': 'Activar modo de grupo',
+        'step1.add_group': 'Añadir grupo',
+        'step1.grp_hint_title': '¿Qué es el modo de grupo?',
+        'step1.grp_hint_body': 'El modo de grupo procesa múltiples subtítulos como un único super-subtítulo, generando un solo resultado para las fuentes con el mismo nombre. Es especialmente adecuado al encapsular múltiples subtítulos en un solo archivo MKV, lo que reduce eficazmente la redundancia de fuentes dentro del MKV. También puede combinarse con la opción "Separar subtítulos y fuentes".',
+        'aria.grp_remove': 'Eliminar Grupo {n}',
+        'aria.grp_set_target': 'Establecer como destino de incrustación',
+        'aria.grp_remove_file': 'Quitar del grupo',
         'grp.embed_target': 'Destino de inserción',
         'step1.hint': 'Archivos .ass, .ssa, .zip y carpetas (arrastra y suelta) — selección múltiple para procesamiento por lotes',
         'step1.title': 'Subir subtítulo',
@@ -3173,8 +3225,13 @@
         'step.active': '(в процессе)',
         'step.done': '(завершено)',
         'step1.drop': 'Перетащите скрипт сюда или нажмите для выбора',
-        'step1.group_toggle': 'Включить режим группы',
+        'step1.group_toggle': 'Включить групповой режим',
         'step1.add_group': 'Добавить группу',
+        'step1.grp_hint_title': 'Что такое групповой режим?',
+        'step1.grp_hint_body': 'Групповой режим обрабатывает несколько субтитров как один супер-субтитр, поэтому шрифты с одинаковым именем обрабатываются только один раз. Это особенно полезно при мультиплексировании нескольких субтитров в один файл MKV, что эффективно снижает избыточность шрифтов внутри MKV. Эту функцию также можно использовать вместе с опцией «Разделение субтитров и шрифтов».',
+        'aria.grp_remove': 'Удалить группу {n}',
+        'aria.grp_set_target': 'Установить как цель вставки',
+        'aria.grp_remove_file': 'Удалить из группы',
         'grp.embed_target': 'Цель встраивания',
         'step1.hint': 'Файлы .ass, .ssa, .zip и перетаскивание папок — мультивыбор для пакетной обработки',
         'step1.title': 'Загрузить скрипт',
@@ -3367,8 +3424,13 @@
         'step.active': '(em andamento)',
         'step.done': '(concluído)',
         'step1.drop': 'Arraste sua legenda aqui ou clique para selecionar',
-        'step1.group_toggle': 'Ativar modo de grupo',
-        'step1.add_group': 'Adicionar grupo',
+        'step1.group_toggle': 'Ativar Modo de Grupo',
+        'step1.add_group': 'Adicionar Grupo',
+        'step1.grp_hint_title': 'O que é o Modo de Grupo?',
+        'step1.grp_hint_body': 'O Modo de Grupo processa múltiplas legendas como uma única superlegenda, gerando apenas um resultado para fontes com o mesmo nome. É especialmente adequado ao encapsular múltiplas legendas em um único arquivo MKV, reduzindo efetivamente a redundância de fontes dentro do MKV. Também pode ser combinado com a opção "Separar legendas e fontes".',
+        'aria.grp_remove': 'Remover Grupo {n}',
+        'aria.grp_set_target': 'Definir como destino de incorporação',
+        'aria.grp_remove_file': 'Remover do grupo',
         'grp.embed_target': 'Alvo de incorporação',
         'step1.hint': 'Arquivos .ass, .ssa, .zip e arrastar pastas — seleção múltipla para lote',
         'step1.title': 'Enviar legenda',
@@ -3561,8 +3623,13 @@
         'step.active': '(قيد التنفيذ)',
         'step.done': '(مكتمل)',
         'step1.drop': 'اسحب نصك هنا أو انقر للاختيار',
-        'step1.group_toggle': 'تفعيل وضع المجموعة',
+        'step1.group_toggle': 'تفعيل وضع المجموعات',
         'step1.add_group': 'إضافة مجموعة',
+        'step1.grp_hint_title': 'ما هو وضع المجموعات؟',
+        'step1.grp_hint_body': 'يعالج وضع المجموعات ملفات ترجمة متعددة كملف ترجمة عملاق واحد أثناء المعالجة، مما ينتج عنه نتيجة معالجة واحدة للخطوط التي تحمل نفس الاسم. وهو مناسب بشكل خاص عند دمج (muxing) ترجمات متعددة في ملف MKV واحد، مما يقلل بشكل فعال من تكرار الخطوط داخل ملف MKV. يمكن أيضًا استخدامه مع خيار "فصل الترجمات والخطوط".',
+        'aria.grp_remove': 'حذف المجموعة {n}',
+        'aria.grp_set_target': 'تعيين كهدف للتضمين',
+        'aria.grp_remove_file': 'إزالة من المجموعة',
         'grp.embed_target': 'هدف التضمين',
         'step1.hint': 'ملفات .ass و.ssa و.zip وسحب المجلدات — متعدد الاختيار للمعالجة الجماعية',
         'step1.title': 'رفع النص',
@@ -3757,6 +3824,11 @@
         'step1.drop': 'Altyazıyı buraya sürükle veya tıkla',
         'step1.group_toggle': 'Grup Modunu Etkinleştir',
         'step1.add_group': 'Grup Ekle',
+        'step1.grp_hint_title': 'Grup Modu Nedir?',
+        'step1.grp_hint_body': 'Grup Modu, birden fazla altyazıyı tek bir süper altyazı olarak işler, böylece aynı ada sahip yazı tipleri yalnızca bir kez işlenmiş sonuç üretir. Tek bir MKV dosyasına birden fazla altyazı eklendiği (muxing) durumlar için özellikle uygundur ve MKV içindeki yazı tipi fazlalığını etkili bir şekilde azaltır. Ayrıca "Altyazıları ve Yazı Tiplerini Ayır" seçeneğiyle de birleştirilebilir.',
+        'aria.grp_remove': '{n}. Grubu Kaldır',
+        'aria.grp_set_target': 'Gömüm hedefi olarak ayarla',
+        'aria.grp_remove_file': 'Gruptan kaldır',
         'grp.embed_target': 'Gömme Hedefi',
         'step1.hint': '.ass, .ssa, .zip dosyaları ve klasör sürükle-bırak desteklenir — toplu dönüşüm için çoklu seçim',
         'step1.title': 'Altyazı yükle',
@@ -6252,6 +6324,30 @@
       renderFontPaths();
       document.getElementById('opt-group-mode').checked = false;
 
+      [['font-path-hint', null]].forEach(([id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const toggle = () => {
+          const open = el.classList.toggle('open');
+          el.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+        el.onclick = toggle;
+        el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+      });
+
+      const grpHintBtn = document.getElementById('grp-hint');
+      const grpHintDetails = document.getElementById('grp-hint-details');
+      if (grpHintBtn && grpHintDetails) {
+        const toggleGrpHint = () => {
+          const open = grpHintBtn.getAttribute('aria-expanded') !== 'true';
+          grpHintDetails.style.display = open ? '' : 'none';
+          grpHintBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          grpHintBtn.classList.toggle('open', open);
+        };
+        grpHintBtn.onclick = toggleGrpHint;
+        grpHintBtn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGrpHint(); } };
+      }
+
       initWorker();
 
       if ('queryLocalFonts' in window) {
@@ -6390,6 +6486,7 @@
           hdr.appendChild(lbl);
           const x = document.createElement('button');
           x.className = 'grp-btn-x'; x.type = 'button'; x.textContent = '✕';
+          x.setAttribute('aria-label', t('aria.grp_remove', { n: gi + 1 }) || `Remove Group ${gi + 1}`);
           x.style.visibility = S.groups.length <= 1 ? 'hidden' : 'visible';
           x.disabled = S.groups.length <= 1;
           x.addEventListener('click', () => { if (S.groups.length > 1) { S.groups.splice(gi, 1); grpRender(); updateGroupProcessState(); } });
@@ -6404,9 +6501,16 @@
             const isTarget = f._origIndex === targetIdx;
             const row = document.createElement('div');
             row.className = 'grp-file-row' + (isTarget ? ' grp-embed-target' : '');
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('aria-pressed', isTarget ? 'true' : 'false');
+            row.setAttribute('aria-label', (t('aria.grp_set_target') || 'Set as embed target') + ': ' + f.file.name.replace(/.*[/\\]/, ''));
             row.addEventListener('click', ev => {
               if (ev.target.classList.contains('grp-file-rm')) return;
               g.embedTargetIndex = f._origIndex; g.userSetEmbedTarget = true; grpRender();
+            });
+            row.addEventListener('keydown', ev => {
+              if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (!ev.target.classList.contains('grp-file-rm')) { g.embedTargetIndex = f._origIndex; g.userSetEmbedTarget = true; grpRender(); } }
             });
             const name = document.createElement('span');
             name.className = 'grp-file-name'; name.textContent = f.file.name.replace(/.*[/\\]/, '');
@@ -6420,6 +6524,7 @@
             row.appendChild(sz);
             const rm = document.createElement('button');
             rm.className = 'grp-file-rm'; rm.type = 'button'; rm.textContent = '✕';
+            rm.setAttribute('aria-label', (t('aria.grp_remove_file') || 'Remove') + ': ' + f.file.name.replace(/.*[/\\]/, ''));
             rm.addEventListener('click', ev => {
               ev.stopPropagation();
               g.files.splice(f._origIndex, 1);
@@ -6435,6 +6540,9 @@
           if (g.files.length) card.appendChild(fileList);
           const dz = document.createElement('div');
           dz.className = 'grp-dz-wrap';
+          dz.setAttribute('role', 'button');
+          dz.setAttribute('tabindex', '0');
+          dz.setAttribute('aria-label', (t('aria.dz_ass') || 'Upload subtitle files') + ' — Group ' + (gi + 1));
           const dzMain = document.createElement('div'); dzMain.className = 'dz-main'; dzMain.textContent = t('step1.drop');
           const dzHint = document.createElement('div'); dzHint.className = 'dz-hint'; dzHint.textContent = t('step1.hint');
           dz.appendChild(dzMain); dz.appendChild(dzHint);
@@ -6444,6 +6552,7 @@
             tmp.addEventListener('change', () => tmp.files.length && grpHandleFiles(g, tmp.files));
             tmp.click();
           });
+          dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dz.click(); } });
           dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
           dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
           dz.addEventListener('drop', async e => {
