@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.7">
+  <meta name="version" content="2.8.8">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -2825,7 +2825,7 @@
         'step1.group_toggle': '그룹 모드 활성화',
         'step1.add_group': '그룹 추가',
         'step1.grp_hint_title': '그룹 모드란 무엇인가요?',
-        'step1.grp_hint_body': '그룹 모드는 여러 자막을 하나의 단일 슈퍼 자막으로 취급하여 처리하므로, 동일한 이름의 글꼴은 한 번만 처리된 결과물을 생성합니다. 단일 MKV 파일에 여러 자막을 다중화(Muxing)할 때 특히 적합하며, MKV 내 글꼴 중복을 효과적으로 줄여줍니다. "자막과 글꼴 분리" 옵션과 결합하여 사용할 수도 있습니다.',
+        'step1.grp_hint_body': '그룹 모드는 처리 과정에서 여러 자막을 하나의 단일 상위 자막(super-subtitle)으로 취급하여, 이름이 같은 글꼴에 대해 단 한 번만 처리 결과를 생성합니다. 이는 여러 자막을 하나의 MKV 파일로 멀티플렉싱할 때 특히 유용하며, MKV 내의 글꼴 중복을 효과적으로 줄여줍니다. 또한 "자막과 폰트 분리" 옵션과 결합하여 사용할 수도 있습니다.',
         'aria.grp_remove': '그룹 {n} 제거',
         'aria.grp_set_target': '임베드 대상으로 설정',
         'aria.grp_remove_file': '그룹에서 제거',
@@ -3223,7 +3223,7 @@
         'step1.group_toggle': 'Включить групповой режим',
         'step1.add_group': 'Добавить группу',
         'step1.grp_hint_title': 'Что такое групповой режим?',
-        'step1.grp_hint_body': 'Групповой режим обрабатывает несколько субтитров как один супер-субтитр, поэтому шрифты с одинаковым именем обрабатываются только один раз. Это особенно полезно при мультиплексировании нескольких субтитров в один файл MKV, что эффективно снижает избыточность шрифтов внутри MKV. Эту функцию также можно использовать вместе с опцией «Разделение субтитров и шрифтов».',
+        'step1.grp_hint_body': 'Групповой режим обрабатывает несколько файлов субтитров как один единый суперсубтитр, благодаря чему для шрифтов с одинаковым названием создается только один результат обработки. Это особенно удобно при сборке нескольких субтитров в один файл MKV, так как позволяет эффективно уменьшить избыточность шрифтов внутри MKV. Также этот режим можно сочетать с опцией «Разделить субтитры и шрифты».',
         'aria.grp_remove': 'Удалить группу {n}',
         'aria.grp_set_target': 'Установить как цель вставки',
         'aria.grp_remove_file': 'Удалить из группы',
@@ -3621,7 +3621,7 @@
         'step1.group_toggle': 'تفعيل وضع المجموعات',
         'step1.add_group': 'إضافة مجموعة',
         'step1.grp_hint_title': 'ما هو وضع المجموعات؟',
-        'step1.grp_hint_body': 'يعالج وضع المجموعات ملفات ترجمة متعددة كملف ترجمة عملاق واحد أثناء المعالجة، مما ينتج عنه نتيجة معالجة واحدة للخطوط التي تحمل نفس الاسم. وهو مناسب بشكل خاص عند دمج (muxing) ترجمات متعددة في ملف MKV واحد، مما يقلل بشكل فعال من تكرار الخطوط داخل ملف MKV. يمكن أيضًا استخدامه مع خيار "فصل الترجمات والخطوط".',
+        'step1.grp_hint_body': 'يعالج "وضع المجموعات" ملفات ترجمة متعددة كترجمة عملاقة واحدة أثناء المعالجة، مما ينتج عنه نتيجة معالجة واحدة فقط للخطوط التي تحمل نفس الاسم. وهو مناسب تمامًا عند دمج ترجمات متعددة في ملف MKV واحد، مما يقلل بشكل فعال من تكرار الخطوط داخل ملف MKV. يمكن أيضًا دمجه مع خيار "فصل الترجمة عن الخطوط".',
         'aria.grp_remove': 'حذف المجموعة {n}',
         'aria.grp_set_target': 'تعيين كهدف للتضمين',
         'aria.grp_remove_file': 'إزالة من المجموعة',
@@ -3820,7 +3820,7 @@
         'step1.group_toggle': 'Grup Modunu Etkinleştir',
         'step1.add_group': 'Grup Ekle',
         'step1.grp_hint_title': 'Grup Modu Nedir?',
-        'step1.grp_hint_body': 'Grup Modu, birden fazla altyazıyı tek bir süper altyazı olarak işler, böylece aynı ada sahip yazı tipleri yalnızca bir kez işlenmiş sonuç üretir. Tek bir MKV dosyasına birden fazla altyazı eklendiği (muxing) durumlar için özellikle uygundur ve MKV içindeki yazı tipi fazlalığını etkili bir şekilde azaltır. Ayrıca "Altyazıları ve Yazı Tiplerini Ayır" seçeneğiyle de birleştirilebilir.',
+        'step1.grp_hint_body': 'Grup Modu, işleme sırasında birden fazla altyazıyı tek bir süper altyazı gibi ele alır ve aynı ada sahip yazı tipleri için yalnızca tek bir işlem sonucu üretir. Özellikle birden fazla altyazıyı tek bir MKV dosyasında birleştirirken son derece kullanışlıdır ve MKV içindeki yazı tipi gereksizliğini etkili bir şekilde azaltır. Ayrıca "Altyazı ve fontları ayır" seçeneğiyle de birleştirilebilir.',
         'aria.grp_remove': '{n}. Grubu Kaldır',
         'aria.grp_set_target': 'Gömüm hedefi olarak ayarla',
         'aria.grp_remove_file': 'Gruptan kaldır',
