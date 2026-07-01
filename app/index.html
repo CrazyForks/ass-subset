@@ -21,7 +21,7 @@
   <link rel="alternate" hreflang="ar" href="https://subs.js.org/ass-subset/?lang=ar">
   <link rel="alternate" hreflang="x-default" href="https://subs.js.org/ass-subset/">
   <link rel="icon" type="image/jpeg" href="icons/icon-256.png">
-  <meta name="version" content="2.8.9">
+  <meta name="version" content="2.8.10">
   <meta property="og:type" content="website">
   <meta property="og:title" content="ASS Subsetter · Font Embedding for Subtitles">
   <meta property="og:description" content="Font embedding tool for ASS/SSA subtitles. Subset fonts to compress file size, or embed them fully. Perfect for complex subtitle typesetting with multiple font files.">
@@ -5273,7 +5273,7 @@
       const separator = currentLang.startsWith('zh') || currentLang === 'ja' ? '、' : ', ';
       el.textContent = t('notice.fstype', { fonts: restricted.join(separator) });
     }
-    const WEIGHT_KW = ['bold', 'black', 'heavy', 'extrabold', 'semibold', 'medium', 'light', 'thin', 'extralight', 'ultralight'];
+    const WEIGHT_KW = ['heavy', 'black', 'extrabold', 'ultrabold', 'semibold', 'demibold', 'bold', 'medium', 'normal', 'regular', 'light', 'extralight', 'ultralight', 'thin', 'hairline'];
     const ITALIC_KW = ['italic', 'oblique', 'slanted'];
 
     function parseVersion(s) {
